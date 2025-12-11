@@ -1,0 +1,26 @@
+# System
+__pycache__/
+*.pyc
+.DS_Store
+
+# Python
+python/config.py
+venv/
+.env
+
+# Javascript / Next.js
+node_modules/
+.next/
+out/
+build/
+.vercel/
+
+# Media
+photos/
+*.jpg
+*.png
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
