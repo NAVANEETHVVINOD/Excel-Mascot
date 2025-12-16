@@ -61,7 +61,6 @@ export default function Gallery() {
             <header>
                 <div className="badge">Excel 2025</div>
                 <h1>MASCOT BOOTH</h1>
-                <p className="subtitle">Capture the Vibe ✨</p>
             </header>
 
             <section className="controls-section">
@@ -90,7 +89,9 @@ export default function Gallery() {
                         </div>
                         <div className="handwritten">Mascot '25</div>
                         <div className="card-actions">
-                            <a href={p.image_url} download className="save-link">SAVE</a>
+                            <a href={p.image_url} download target="_blank" className="download-btn-card">
+                                ⬇ DOWNLOAD
+                            </a>
                         </div>
                     </div>
                 ))}
@@ -102,33 +103,34 @@ export default function Gallery() {
 
             <style jsx global>{`
                 :root {
-                    --bg: #2b2b2b;
+                    --bg: #5c4033;
                     --paper: #f4f1ea;
                     --tape: rgba(255, 255, 255, 0.4);
-                    --accent: #ff0055;
+                    --accent: #d32f2f;
+                    --yellow: #ffeb3b; 
                 }
 
                 * { box-sizing: border-box; }
 
                 body {
                     margin: 0;
-                    background-color: #222;
+                    background-color: #5c4033;
                     background-image: 
-                        linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%, #1a1a1a), 
-                        linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%, #1a1a1a);
-                    background-size: 40px 40px;
-                    background-position: 0 0, 20px 20px;
+                        repeating-linear-gradient(45deg, #6b4c3e 25%, transparent 25%, transparent 75%, #6b4c3e 75%, #6b4c3e), 
+                        repeating-linear-gradient(45deg, #6b4c3e 25%, #5c4033 25%, #5c4033 75%, #6b4c3e 75%, #6b4c3e);
+                    background-size: 20px 20px;
+                    background-position: 0 0, 10px 10px;
                     color: white;
                     font-family: 'Permanent Marker', cursive;
                     min-height: 100vh;
                     overflow-x: hidden;
                 }
 
-                /* Noise Texture */
+                /* Noise Texture - Keep subtle */
                 .noise-overlay {
                     position: fixed; top:0; left:0; width:100%; height:100%;
                     background: url('https://grainy-gradients.vercel.app/noise.svg');
-                    opacity: 0.05;
+                    opacity: 0.03;
                     pointer-events: none;
                     z-index: 999;
                 }
@@ -153,15 +155,18 @@ export default function Gallery() {
                     font-size: 1.2rem;
                     box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
                     margin-bottom: 10px;
+                    color: white;
+                    border: 2px solid white;
                 }
 
                 h1 {
                     font-family: 'Rock Salt', cursive;
-                    font-size: 3rem;
+                    font-size: 3.5rem;
                     margin: 10px 0;
                     text-shadow: 4px 4px 0 #000;
-                    color: #fff;
+                    color: var(--yellow);
                     letter-spacing: 2px;
+                    transform: rotate(-2deg);
                 }
                 
                 @media (max-width: 600px) {
@@ -221,12 +226,20 @@ export default function Gallery() {
                 
                 .retro-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
                 .retro-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+                
+                /* Active State */
+                .retro-btn.active {
+                    border: 3px solid #ffeb3b; /* Yellow border */
+                    transform: scale(1.1) rotate(-2deg);
+                    z-index: 10;
+                    box-shadow: 8px 8px 0 rgba(0,0,0,0.5);
+                }
 
                 .glitch { background: #0ff; color: #000; }
                 .cyber { background: #f0f; color: #fff; }
                 .pastel { background: #ffd1fb; color: #000; }
                 .polaroid { background: #fff; color: #000; }
-                .bw { background: #888; color: #fff; }
+                .bw { background: #333; color: #fff; }
                 .reset { background: #333; color: #fff; border: 1px solid #555; }
 
                 .sm-btn {
@@ -242,6 +255,14 @@ export default function Gallery() {
                     font-size: 0.8rem;
                 }
                 .sm-btn:hover { background: #fff; color: #000; }
+                
+                .sm-btn.active {
+                    background: #ffeb3b; 
+                    color: #000; 
+                    border-color: #ffeb3b;
+                    transform: scale(1.1);
+                    box-shadow: 0 0 10px #ffeb3b;
+                }
 
                 /* Gallery Grid */
                 .gallery {
@@ -252,9 +273,57 @@ export default function Gallery() {
                 }
 
                 /* Polaroid Card */
+                .handwritten {
+                    position: absolute;
+                    bottom: 50px; /* Moved up */
+                    left: 0;
+                    width: 100%;
+                    text-align: center;
+                    color: #444;
+                    font-size: 1.4rem;
+                    font-family: 'Permanent Marker', cursive;
+                    transform: rotate(-1deg);
+                }
+
+                .card-actions {
+                    position: absolute;
+                    bottom: 15px;
+                    width: 100%;
+                    left: 0;
+                    text-align: center;
+                }
+
+                .download-btn-card {
+                    display: inline-block;
+                    text-decoration: none;
+                    font-family: sans-serif;
+                    font-weight: bold;
+                    font-size: 0.9rem;
+                    color: white;
+                    background: #333;
+                    border: 1px solid #000;
+                    padding: 8px 18px;
+                    border-radius: 30px;
+                    box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+                    transition: all 0.2s;
+                    letter-spacing: 1px;
+                }
+                
+                .download-btn-card:hover { 
+                    background: #ffeb3b; 
+                    color: #000; 
+                    transform: scale(1.05);
+                    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+                }
+                
+                .download-btn-card:active {
+                    transform: scale(0.95);
+                }
+
+                /* Polaroid Card */
                 .polaroid-card {
                     background: white;
-                    padding: 15px 15px 60px 15px;
+                    padding: 15px 15px 85px 15px; /* More bottom padding for button */
                     box-shadow: 10px 10px 15px rgba(0,0,0,0.5);
                     transform: rotate(var(--rot));
                     transition: transform 0.3s, z-index 0s;
