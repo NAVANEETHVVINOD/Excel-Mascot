@@ -64,6 +64,42 @@ def upload_photo(local_path, metadata=None):
     sync_queue.add(local_path, metadata)
     return None
 
+def upload_bytes(file_bytes, filename, metadata=None):
+    """
+    Uploads bytes directly to Supabase without local file.
+    Note: Does NOT support offline queuing (data lost if upload fails).
+    """
+    storage_path = filename
+    public_url = None
+
+    for attempt in range(1, 4):
+        try:
+            print(f"☁️ Uploading Bytes {filename} (Attempt {attempt}/3)...")
+            
+            res = supabase.storage.from_(BUCKET_NAME).upload(
+                path=storage_path,
+                file=file_bytes,
+                file_options={"content-type": "image/jpeg"}
+            )
+            
+            public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
+            
+            data = {"image_url": public_url}
+            if metadata: 
+                data.update(metadata)
+
+            supabase.table("photos").insert(data).execute()
+            
+            print(f"✅ Success! Uploaded to Cloud: {public_url}")
+            return public_url
+
+        except Exception as e:
+            print(f"⚠️ Bytes Upload Failed: {e}")
+            time.sleep(1)
+
+    print("❌ Upload failed. Data lost (Memory-only mode).")
+    return None
+
 def process_queue():
     """Process pending items in the offline queue."""
     pending = sync_queue.get_pending()

@@ -74,9 +74,9 @@ export default function Gallery() {
                     <button className="retro-btn reset" onClick={() => sendCommand('SET_FILTER', { filter: 'NONE' })}>RESET</button>
                 </div>
                 <div className="control-group small-gap">
-                    <button className="sm-btn" onClick={() => sendCommand('SET_MODE', { mode: 'BURST' })}>💥 BURST</button>
-                    <button className="sm-btn" onClick={() => sendCommand('SET_MODE', { mode: 'GIF' })}>🎥 GIF</button>
-                    <button className="sm-btn" onClick={() => sendCommand('SET_MODE', { mode: 'SINGLE' })}>📸 1 SHOT</button>
+                    <button className={`sm-btn ${activeMode === 'BURST' ? 'active' : ''}`} onClick={() => setMode('BURST')}>BURST</button>
+                    <button className={`sm-btn ${activeMode === 'GIF' ? 'active' : ''}`} onClick={() => setMode('GIF')}>GIF</button>
+                    <button className={`sm-btn ${activeMode === 'SINGLE' ? 'active' : ''}`} onClick={() => setMode('SINGLE')}>1 SHOT</button>
                 </div>
             </section>
 
@@ -90,7 +90,7 @@ export default function Gallery() {
                         <div className="handwritten">Mascot '25</div>
                         <div className="card-actions">
                             <a href={p.image_url} download target="_blank" className="download-btn-card">
-                                ⬇ DOWNLOAD
+                                DOWNLOAD
                             </a>
                         </div>
                     </div>

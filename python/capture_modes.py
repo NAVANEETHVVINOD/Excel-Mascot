@@ -29,9 +29,11 @@ class CaptureResult:
     mode: CaptureMode
     images: List[np.ndarray]
     timestamps: List[float]
-    output_path: str
+    output_path: Optional[str] = None
     collage_path: Optional[str] = None
     gif_path: Optional[str] = None
+    collage_image: Optional[np.ndarray] = None
+    gif_bytes: Optional[bytes] = None
 
 
 class CaptureManager:
@@ -63,7 +65,8 @@ class CaptureManager:
         self,
         frame: np.ndarray,
         filter_type: FilterType = FilterType.NONE,
-        text: str = "Mascot 2025"
+        text: str = "Mascot 2025",
+        save_to_disk: bool = True
     ) -> CaptureResult:
         """
         Capture a single photo.
@@ -81,7 +84,11 @@ class CaptureManager:
         
         filename = f"photo_{int(timestamp)}.jpg"
         filepath = os.path.join(self.photo_dir, filename)
-        cv2.imwrite(filepath, filtered)
+        
+        if save_to_disk:
+            cv2.imwrite(filepath, filtered)
+        else:
+            filepath = None # No local file
         
         return CaptureResult(
             mode=CaptureMode.SINGLE,
@@ -95,7 +102,8 @@ class CaptureManager:
         cap: cv2.VideoCapture,
         filter_type: FilterType = FilterType.NONE,
         count: int = None,
-        interval_ms: int = None
+        interval_ms: int = None,
+        save_to_disk: bool = True
     ) -> CaptureResult:
         """
         Capture multiple photos in rapid succession.
@@ -127,7 +135,8 @@ class CaptureManager:
                 # Save individual photo
                 filename = f"burst_{base_timestamp}_{i+1}.jpg"
                 filepath = os.path.join(self.photo_dir, filename)
-                cv2.imwrite(filepath, filtered)
+                if save_to_disk:
+                    cv2.imwrite(filepath, filtered)
             
             if i < count - 1:
                 time.sleep(interval_ms / 1000.0)
@@ -136,14 +145,19 @@ class CaptureManager:
         collage = self.create_collage(images)
         collage_filename = f"collage_{base_timestamp}.jpg"
         collage_path = os.path.join(self.photo_dir, collage_filename)
-        cv2.imwrite(collage_path, collage)
         
+        if save_to_disk:
+            cv2.imwrite(collage_path, collage)
+        else:
+            collage_path = None
+
         return CaptureResult(
             mode=CaptureMode.BURST,
             images=images,
             timestamps=timestamps,
             output_path=collage_path,
-            collage_path=collage_path
+            collage_path=collage_path,
+            collage_image=collage
         )
     
     def capture_gif(
@@ -152,7 +166,8 @@ class CaptureManager:
         filter_type: FilterType = FilterType.NONE,
         frames: int = None,
         interval_ms: int = None,
-        duration_per_frame: float = 0.2
+        duration_per_frame: float = 0.2,
+        save_to_disk: bool = True
     ) -> CaptureResult:
         """
         Capture frames and combine into animated GIF.
@@ -192,13 +207,22 @@ class CaptureManager:
         # Create GIF
         gif_filename = f"animation_{base_timestamp}.gif"
         gif_path = os.path.join(self.photo_dir, gif_filename)
+        gif_bytes_data = None
         
-        imageio.mimsave(
-            gif_path,
-            images,
-            duration=duration_per_frame,
-            loop=0
-        )
+        if save_to_disk:
+            imageio.mimsave(
+                gif_path,
+                images,
+                duration=duration_per_frame,
+                loop=0
+            )
+        else:
+            # Save to bytes
+            import io
+            with io.BytesIO() as buf:
+                 imageio.mimsave(buf, images, format='GIF', duration=duration_per_frame, loop=0)
+                 gif_bytes_data = buf.getvalue()
+            gif_path = None
         
         # Convert back to BGR for consistency
         bgr_images = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images]
@@ -208,7 +232,8 @@ class CaptureManager:
             images=bgr_images,
             timestamps=timestamps,
             output_path=gif_path,
-            gif_path=gif_path
+            gif_path=gif_path,
+            gif_bytes=gif_bytes_data
         )
     
     def create_collage(self, images: List[np.ndarray]) -> np.ndarray:

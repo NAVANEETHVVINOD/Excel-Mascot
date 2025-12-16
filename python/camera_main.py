@@ -129,43 +129,74 @@ def main():
                 # 2. Capture Sequence
                 print("📸 Starting Capture Sequence!")
                 
-                # Trigger LED
-                arduino.send_command("PHOTO")
-                time.sleep(0.5) # Short delay for LED to turn on if needed? Or just capture.
-                
-                # Removed Countdown as per request
-                # capture_manager.show_countdown(cap)
-                
-                # 3. Capture based on Mode
                 mode = web_gallery.current_mode
                 filter_name = web_gallery.current_filter
                 filter_type = get_filter_from_string(filter_name)
                 
                 print(f"Mode: {mode}, Filter: {filter_name}")
+
+                # Trigger LED immediately for all modes (visual feedback of trigger)
+                arduino.send_command("PHOTO")
                 
+                # Countdown ONLY for BURST (User Request)
+                if mode == "BURST":
+                    time.sleep(0.5) # Wait for LED flash to settle? 
+                    capture_manager.show_countdown(cap, seconds=3)
+                else:
+                    time.sleep(0.5) # Short delay for others
+                
+                # 3. Capture based on Mode
                 result = None
                 
                 if mode == "BURST":
-                    result = capture_manager.capture_burst(cap, filter_type=filter_type)
+                    result = capture_manager.capture_burst(cap, filter_type=filter_type, save_to_disk=False)
                 elif mode == "GIF":
-                    result = capture_manager.capture_gif(cap, filter_type=filter_type)
+                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=False)
                 else: # SINGLE
                     # Read fresh frame for high quality single shot
                     ret, fresh_frame = cap.read()
                     if ret:
-                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type)
+                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=False)
                 
                 if result:
-                    print(f"✅ Capture complete! Saved to {result.output_path}")
+                    print("✅ Capture complete! (Memory Mode)")
                     
                     # Flash Effect
                     flash = np.ones_like(frame) * 255
                     cv2.imshow("Mascot View", flash)
                     cv2.waitKey(100)
                     
-                    # UDPATE: Upload to Supabase
-                    print("🚀 Uploading to Supabase...")
-                    upload_photo(result.output_path)
+                    # Prepare Data for Upload
+                    file_bytes = None
+                    filename = ""
+                    base_ts = int(time.time())
+                    
+                    try:
+                        if mode == "GIF" and result.gif_bytes:
+                            file_bytes = result.gif_bytes
+                            filename = f"mascot_gif_{base_ts}.gif"
+                        elif mode == "BURST" and result.collage_image is not None:
+                            # Encode Collage
+                            success, buffer = cv2.imencode(".jpg", result.collage_image)
+                            if success:
+                                file_bytes = buffer.tobytes()
+                                filename = f"mascot_burst_{base_ts}.jpg"
+                        elif result.images:
+                            # Single Image
+                            success, buffer = cv2.imencode(".jpg", result.images[0])
+                            if success:
+                                file_bytes = buffer.tobytes()
+                                filename = f"mascot_photo_{base_ts}.jpg"
+                        
+                        if file_bytes:
+                            print(f"🚀 Uploading {len(file_bytes)} bytes to Supabase...")
+                            import supabase_upload
+                            supabase_upload.upload_bytes(file_bytes, filename)
+                        else:
+                            print("❌ Error: No image data to upload.")
+                            
+                    except Exception as e:
+                         print(f"❌ Processing Error: {e}")
                 else:
                     print("❌ Capture Failed")
                 
