@@ -148,7 +148,7 @@ def main():
                 if mode == "BURST":
                     result = capture_manager.capture_burst(cap, filter_type=filter_type)
                 elif mode == "GIF":
-                    result = capture_manager.capture_gif(cap)
+                    result = capture_manager.capture_gif(cap, filter_type=filter_type)
                 else: # SINGLE
                     # Read fresh frame for high quality single shot
                     ret, fresh_frame = cap.read()

@@ -228,11 +228,15 @@ export default function Gallery() {
                 .retro-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
                 
                 /* Active State */
+                /* Active State */
                 .retro-btn.active {
-                    border: 3px solid #ffeb3b; /* Yellow border */
-                    transform: scale(1.1) rotate(-2deg);
-                    z-index: 10;
+                    background: #ffeb3b !important;
+                    color: #000 !important;
+                    border: 3px solid #fff;
+                    transform: scale(1.15) rotate(-2deg);
+                    z-index: 15;
                     box-shadow: 8px 8px 0 rgba(0,0,0,0.5);
+                    font-weight: bold;
                 }
 
                 .glitch { background: #0ff; color: #000; }

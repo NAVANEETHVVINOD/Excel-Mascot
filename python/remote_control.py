@@ -49,15 +49,33 @@ class RemoteController:
 
         print("📡 Connecting to Cloud Remote Control...")
         
-        # Subscribe to broadcast channel
-        self.channel = self.supabase.channel('booth_control')
-        self.channel.on("broadcast", {"event": "command"}, on_message).subscribe()
-        
-        print("✅ Remote Control Active! Waiting for commands...")
+        try:
+            # Subscribe to broadcast channel
+            # Note: Ensure supabase-py supports RealtimeClient via .channel
+            if hasattr(self.supabase, 'channel'):
+                self.channel = self.supabase.channel('booth_control')
+            else:
+                # Fallback or check for .realtime
+                print("⚠️ Warning: Client has no 'channel' method. Checking realtime...")
+                # self.channel = self.supabase.realtime.channel(...) # Potential alternative
+                # For now just try the standard way or fail gracefully
+                self.channel = self.supabase.channel('booth_control')
+
+            self.channel.on("broadcast", {"event": "command"}, on_message).subscribe()
+            print("✅ Remote Control Active! Waiting for commands...")
+            
+        except Exception as e:
+            print(f"❌ Failed to start Remote Control: {e}")
+            import traceback
+            traceback.print_exc()
+            self.running = False
 
     def stop(self):
-        if self.channel:
-            self.channel.unsubscribe()
+        try:
+            if self.channel:
+                self.channel.unsubscribe()
+        except Exception as e:
+            print(f"Error stopping channel: {e}")
         self.running = False
 
 # Singleton

@@ -149,6 +149,7 @@ class CaptureManager:
     def capture_gif(
         self,
         cap: cv2.VideoCapture,
+        filter_type: FilterType = FilterType.NONE,
         frames: int = None,
         interval_ms: int = None,
         duration_per_frame: float = 0.2
@@ -158,6 +159,7 @@ class CaptureManager:
         
         Args:
             cap: OpenCV VideoCapture object
+            filter_type: Filter to apply
             frames: Number of frames (default: 8)
             interval_ms: Interval between captures in ms (default: 200)
             duration_per_frame: Duration of each frame in GIF (seconds)
@@ -176,8 +178,11 @@ class CaptureManager:
             ret, frame = cap.read()
             if ret:
                 timestamp = time.time()
+                # Apply filter first
+                filtered = apply_filter(frame, filter_type)
+                
                 # Convert BGR to RGB for GIF
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                rgb_frame = cv2.cvtColor(filtered, cv2.COLOR_BGR2RGB)
                 images.append(rgb_frame)
                 timestamps.append(timestamp)
             
