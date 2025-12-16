@@ -125,26 +125,23 @@ void loop() {
 }
 
 // =================== PHOTO FLASH (INSTANT) ===================
+// =================== PHOTO FLASH (Key Change: SLOW LOVE BLINK) ===================
 void photoFlash() {
-  uint32_t white = strip1.Color(255,255,255);
+  // User requested "blink the love imojie... little bit slow"
   if(!myServo.attached()) myServo.attach(11);
+  myServo.write(110); // Wave
   
-  // Quick Triple Flash
-  for(int k=0; k<3; k++){
-    for(int i=0; i<15; i++) { 
-        strip1.setPixelColor(i, white); 
-        strip3.setPixelColor(i, white); 
-    }
-    strip1.show(); strip3.show();
-    if(k==0) myServo.write(110); 
-    delay(60); // Faster
-    
-    strip1.clear(); strip3.clear();
-    strip1.show(); strip3.show();
-    if(k==0) myServo.write(30);
-    delay(60);
+  for(int k=0; k<2; k++){
+      emotionLove(); // Show Love Pulse
+      delay(600);    // Slow hold (0.6s)
+      
+      strip1.clear(); strip3.clear();
+      strip1.show(); strip3.show();
+      delay(300);    // Off interval
   }
-  delay(100);
+  
+  myServo.write(30);
+  delay(200);
   myServo.detach();
 }
 
@@ -163,7 +160,6 @@ void emotionLove() {
     strip3.setPixelColor(idx, pupil ? white : pink);
   }
   strip1.show(); strip3.show();
-  delay(100);
 }
 
 // =================== SUS MODE (SMOOTHER) ===================
@@ -184,16 +180,22 @@ void emotionSus() {
      strip1.setPixelColor(susLeds[i], color);
      strip3.setPixelColor(susLeds[i], color);
   }
-  strip1.show(); strip3.show();
-  delay(20); 
+  strip1.show(); strip3.show(); // Removed delay(20) to avoid blocking main loop too much if called often
 }
-
-// =================== NORMAL MODE ===================
 void emotionNormal() {
   strip1.clear(); strip3.clear();
   uint32_t redDim = strip1.Color(120, 0, 0);
-  uint32_t yellow = strip1.Color(255, 200, 0);
+  
+  // Calculate Slow Blink/Breathing for Inner LEDs
+  // sin wave based on time (approx 2s period)
+  float breath = (exp(sin(millis()/800.0*PI)) - 0.36787944)*108.0;
+  int bVal = (int)breath;
+  if(bVal > 255) bVal = 255; 
+  if(bVal < 10) bVal = 10;
+  
+  uint32_t yellowBlink = strip1.Color(bVal, (bVal*200)/255, 0); // Preserve Yellow Ratio
 
+  // Outer LEDs Static Red
   for (int i = 0; i < 15; i++) {
     if (i == 14) continue; 
     if (!isInner(i)) {
@@ -201,9 +203,10 @@ void emotionNormal() {
       strip3.setPixelColor(i, redDim);
     }
   }
+  // Inner LEDs Blinking Yellow
   for (int i = 0; i < 4; i++) {
-    strip1.setPixelColor(innerLEDs[i], yellow);
-    strip3.setPixelColor(innerLEDs[i], yellow);
+    strip1.setPixelColor(innerLEDs[i], yellowBlink);
+    strip3.setPixelColor(innerLEDs[i], yellowBlink);
   }
   strip1.show(); strip3.show();
 }
