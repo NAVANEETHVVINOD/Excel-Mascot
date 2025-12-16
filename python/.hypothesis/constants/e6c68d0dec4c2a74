@@ -1,0 +1,4 @@
+# file: F:\kannan\projects\mascot\mascot_photobooth\python\settings.py
+# hypothesis_version: 6.148.7
+
+[0.8, '0.8', 'BUCKET_NAME', 'Missing SUPABASE_KEY', 'Missing SUPABASE_URL', 'ROBOFLOW_API_KEY', 'ROBOFLOW_CONFIDENCE', 'ROBOFLOW_MODEL_ID', 'SUPABASE_KEY', 'SUPABASE_URL', 'photos']

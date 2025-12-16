@@ -11,59 +11,21 @@ from gestures import GestureRecognizer
 from arduino_bridge import ArduinoBridge
 import web_gallery
 from supabase_upload import upload_photo
+from roboflow_detector import RoboflowDetector, AnimationType
+from capture_modes import CaptureManager
+from filters import get_filter_from_string
 
 # Configuration
 PHOTO_DIR = web_gallery.PHOTO_DIR
 CAPTURE_COOLDOWN = 6.0 # Increased for countdown
 
-def apply_cartoon(img):
-    # Edges
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.medianBlur(gray, 5)
-    edges = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 9)
-    # Color
-    color = cv2.bilateralFilter(img, 9, 75, 75)
-    return cv2.bitwise_and(color, color, mask=edges)
+# Roboflow Configuration (optional - set these to enable AI detection)
+ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", None)
+ROBOFLOW_MODEL_ID = os.environ.get("ROBOFLOW_MODEL_ID", None)
+ROBOFLOW_CONFIDENCE = float(os.environ.get("ROBOFLOW_CONFIDENCE", "0.8"))
+ROBOFLOW_ENABLED = bool(ROBOFLOW_API_KEY and ROBOFLOW_MODEL_ID)
 
-def apply_vintage(img):
-    # Sepia Filter
-    kernel = np.array([[0.272, 0.534, 0.131],
-                       [0.349, 0.686, 0.168],
-                       [0.393, 0.769, 0.189]])
-    sepia = cv2.transform(img, kernel)
-    sepia = np.clip(sepia, 0, 255)
-    
-    # Add Noise
-    noise = np.random.normal(0, 15, sepia.shape).astype(np.uint8)
-    vintage = cv2.add(sepia.astype(np.uint8), noise)
-    return vintage
 
-def apply_polaroid_frame(img):
-    # White Border
-    # Top, Left, Right = 20, Bottom = 100
-    row, col = img.shape[:2]
-    bottom = int(row * 0.25) # 25% of height for bottom
-    border = int(col * 0.05) # 5% for sides
-    
-    # White Color
-    white = [255, 255, 255]
-    
-    # Add border
-    polaroid = cv2.copyMakeBorder(img, border, bottom, border, border, cv2.BORDER_CONSTANT, value=white)
-    
-    # Add Text
-    text = "Mascot 2025"
-    font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
-    font_scale = 1.5
-    thickness = 2
-    
-    # Centered text in bottom area
-    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-    text_x = (polaroid.shape[1] - text_size[0]) // 2
-    text_y = polaroid.shape[0] - (bottom // 2) + (text_size[1] // 2)
-    
-    cv2.putText(polaroid, text, (text_x, text_y), font, font_scale, (50, 50, 50), thickness)
-    return polaroid
 
 def main():
     print("🚀 Starting Mascot Photo Booth System...")
@@ -79,7 +41,22 @@ def main():
     # 3. Init Hand Detector
     recognizer = GestureRecognizer()
 
-    # 4. Start Camera
+    # 3.5 Init Capture Manager
+    capture_manager = CaptureManager(PHOTO_DIR)
+
+    # 4. Init Roboflow Detector (optional)
+    roboflow = None
+    if ROBOFLOW_ENABLED:
+        roboflow = RoboflowDetector(
+            api_key=ROBOFLOW_API_KEY,
+            model_id=ROBOFLOW_MODEL_ID,
+            confidence_threshold=ROBOFLOW_CONFIDENCE
+        )
+        print(f"🤖 Roboflow AI detection enabled (model: {ROBOFLOW_MODEL_ID})")
+    else:
+        print("ℹ️ Roboflow AI detection disabled (set ROBOFLOW_API_KEY and ROBOFLOW_MODEL_ID to enable)")
+
+    # 5. Start Camera
     cap = cv2.VideoCapture(1) # Try Ext first
     if not cap.isOpened():
         cap = cv2.VideoCapture(0)
@@ -108,14 +85,35 @@ def main():
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results, gesture_name = recognizer.process_frame(rgb)
         
-        current_command = "NORMAL" 
+        current_command = "NORMAL"
+        roboflow_detections = []
         
+        # Run Roboflow detection (if enabled)
+        if roboflow and roboflow.is_available():
+            detection_result = roboflow.detect(frame)
+            if detection_result.success:
+                roboflow_detections = detection_result.detections
+                # Check for animation triggers from detections
+                triggered = roboflow.get_triggered_animations(roboflow_detections)
+                if triggered:
+                    # Use the first high-confidence detection's animation
+                    _, animation = triggered[0]
+                    if animation == AnimationType.LOVE:
+                        current_command = "LOVE"
+                    elif animation == AnimationType.SUS:
+                        current_command = "SUS"
+                    elif animation == AnimationType.RAINBOW:
+                        current_command = "RAINBOW"
+                    elif animation == AnimationType.WELCOME:
+                        current_command = "WELCOME"
+        
+        # Gesture detection (MediaPipe) - takes priority for photo trigger
         if gesture_name:
             if gesture_name == "THUMBS_UP":
                 current_command = "PHOTO_TRIGGER"
-            elif gesture_name == "LOVE":
+            elif gesture_name == "LOVE" and current_command == "NORMAL":
                 current_command = "LOVE"
-            elif gesture_name == "SUS":
+            elif gesture_name == "SUS" and current_command == "NORMAL":
                 current_command = "SUS"
         
         # Handle Photo Capture
@@ -123,50 +121,44 @@ def main():
             if time.time() - last_capture_time > CAPTURE_COOLDOWN:
                 last_capture_time = time.time()
                 
-                # 2. Capture IMMEDIATELY (Instant Snap)
-                print("📸 Snapping photo!")
-                # Optional small delay if we want to ensure Arduino Flash is ON frame?
-                # Arduino flash starts instantly. 60+60+60*3 ~ 400ms total. 
-                # If we grab frame now, we might get the flash.
-                # Let's wait 100ms.
-                time.sleep(0.1)
+                # 2. Capture Sequence
+                print("📸 Starting Capture Sequence!")
                 
-                # 3. Capture & Filter
-                ret, fresh_frame = cap.read()
-                if ret:
-                    clean_frame = fresh_frame.copy()
-                    
-                    # Apply Filter
-                    mode = web_gallery.current_filter
-                    print(f"Applying Filter: {mode}")
-                    
-                    final_img = clean_frame
-                    
-                    if mode == "CARTOON":
-                        final_img = apply_cartoon(clean_frame)
-                    elif mode == "VINTAGE":
-                        final_img = apply_vintage(clean_frame)
-                    elif mode == "BW":
-                        gray = cv2.cvtColor(clean_frame, cv2.COLOR_BGR2GRAY)
-                        final_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-                    elif mode == "POLAROID":
-                        # Apply Border
-                        final_img = apply_polaroid_frame(clean_frame)
-
-                    # Save
-                    timestamp = int(time.time())
-                    filename = f"photo_{timestamp}.jpg"
-                    filepath = os.path.join(PHOTO_DIR, filename)
-                    cv2.imwrite(filepath, final_img)
-                    
-                    # Upload to Cloud (Non-blocking ideally, but blocking for safety first as requested)
-                    print("🚀 Uploading to Supabase...")
-                    upload_photo(filepath)
+                # Show Countdown
+                capture_manager.show_countdown(cap)
+                
+                # 3. Capture based on Mode
+                mode = web_gallery.current_mode
+                filter_name = web_gallery.current_filter
+                filter_type = get_filter_from_string(filter_name)
+                
+                print(f"Mode: {mode}, Filter: {filter_name}")
+                
+                result = None
+                
+                if mode == "BURST":
+                    result = capture_manager.capture_burst(cap, filter_type=filter_type)
+                elif mode == "GIF":
+                    result = capture_manager.capture_gif(cap)
+                else: # SINGLE
+                    # Read fresh frame for high quality single shot
+                    ret, fresh_frame = cap.read()
+                    if ret:
+                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type)
+                
+                if result:
+                    print(f"✅ Capture complete! Saved to {result.output_path}")
                     
                     # Flash Effect
                     flash = np.ones_like(frame) * 255
                     cv2.imshow("Mascot View", flash)
                     cv2.waitKey(100)
+                    
+                    # UDPATE: Upload to Supabase
+                    print("🚀 Uploading to Supabase...")
+                    upload_photo(result.output_path)
+                else:
+                    print("❌ Capture Failed")
                 
             else:
                 pass
@@ -184,9 +176,19 @@ def main():
         # Overlay Info
         display_frame = frame.copy()
         
+        # Draw Roboflow detections if any
+        if roboflow and roboflow_detections:
+            display_frame = roboflow.draw_detections(display_frame, roboflow_detections)
+        
         # Show specific filter status text small in corner
         cv2.putText(display_frame, f"Filter: {web_gallery.current_filter}", (10, 470), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        
+        # Show Roboflow status
+        if roboflow and roboflow.is_available():
+            status = f"AI: {len(roboflow_detections)} detections"
+            cv2.putText(display_frame, status, (10, 30), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                     
         # Show URL in corner?
         # cv2.putText(display_frame, "Scan for Photos!", (450, 470), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)

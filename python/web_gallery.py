@@ -190,6 +190,15 @@ HTML_TEMPLATE = """
             });
         }
         
+        function setMode(mode) {
+            fetch('/set_mode/' + mode)
+            .then(response => response.json())
+            .then(data => {
+                document.querySelectorAll('[id^=mode-]').forEach(b => b.classList.remove('active'));
+                document.getElementById('mode-' + mode).classList.add('active');
+            });
+        }
+        
         function deletePhoto(filename) {
             if(confirm("Confirm Delete?")) {
                 fetch('/delete_photo/' + filename)
@@ -242,10 +251,19 @@ HTML_TEMPLATE = """
     <div class="subtitle">Tech Fest 2k25</div>
     
     <div class="controls">
+        <span style="width: 100%; text-align: center; color: #fff; text-shadow: 1px 1px 0 #000; margin-bottom: 5px;">FILTERS</span>
         <button id="btn-NORMAL" class="btn" onclick="setFilter('NORMAL')">Color</button>
         <button id="btn-BW" class="btn" onclick="setFilter('BW')">B&W</button>
         <button id="btn-VINTAGE" class="btn" onclick="setFilter('VINTAGE')">Sepia</button>
         <button id="btn-POLAROID" class="btn" onclick="setFilter('POLAROID')">Polaroid</button>
+    </div>
+
+    <div class="controls" style="margin-top: -15px;">
+        <span style="width: 100%; text-align: center; color: #fff; text-shadow: 1px 1px 0 #000; margin-bottom: 5px;">MODE</span>
+        <button id="mode-SINGLE" class="btn" onclick="setMode('SINGLE')">Single</button>
+        <button id="mode-BURST" class="btn" onclick="setMode('BURST')">Burst</button>
+        <button id="mode-GIF" class="btn" onclick="setMode('GIF')">GIF</button>
+        <!-- <button id="mode-COUNTDOWN" class="btn" onclick="toggleCountdown()">Timer</button> -->
     </div>
 
     <div class="gallery" id="gallery-container">
@@ -255,6 +273,14 @@ HTML_TEMPLATE = """
         fetch('/get_filter').then(r=>r.json()).then(d => {
             if(d.filter) {
                 let id = 'btn-' + d.filter;
+                let el = document.getElementById(id);
+                if(el) el.classList.add('active');
+            }
+        });
+        
+        fetch('/get_mode').then(r=>r.json()).then(d => {
+            if(d.mode) {
+                let id = 'mode-' + d.mode;
                 let el = document.getElementById(id);
                 if(el) el.classList.add('active');
             }
@@ -300,6 +326,20 @@ def set_filter(mode):
 @app.route("/get_filter")
 def get_filter():
     return jsonify({"filter": current_filter})
+
+# Global State for Capture Mode
+current_mode = "SINGLE"
+
+@app.route("/set_mode/<mode>")
+def set_mode(mode):
+    global current_mode
+    if mode in ["SINGLE", "BURST", "GIF"]:
+        current_mode = mode
+    return jsonify({"status": "ok", "mode": current_mode})
+
+@app.route("/get_mode")
+def get_mode():
+    return jsonify({"mode": current_mode})
 
 def run_server(port=5000):
     import logging
