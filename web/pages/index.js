@@ -4,7 +4,6 @@ import Head from "next/head";
 
 export default function Gallery() {
     const [photos, setPhotos] = useState([]);
-    const [viewMode, setViewMode] = useState("GALLERY"); // "GALLERY" or "LIVE"
 
     async function loadPhotos() {
         let { data, error } = await supabase
@@ -18,16 +17,12 @@ export default function Gallery() {
 
     useEffect(() => {
         loadPhotos();
-
-        // Realtime Subscription
         const channel = supabase
             .channel("photos-changes")
             .on(
                 "postgres_changes",
                 { event: "INSERT", schema: "public", table: "photos" },
                 (payload) => {
-                    console.log("New Photo!", payload);
-                    // Prepend new photo
                     setPhotos((prev) => [payload.new, ...prev]);
                 }
             )
@@ -41,110 +36,136 @@ export default function Gallery() {
     return (
         <div className="container">
             <Head>
-                <title>Mascot Cloud Gallery</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>Mascot Gallery</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet" />
             </Head>
 
-            <header>
-                <h1>☁️ Mascot Cloud Gallery</h1>
-                <div className="controls">
-                    <button
-                        className={viewMode === "GALLERY" ? "active" : ""}
-                        onClick={() => setViewMode("GALLERY")}
-                    >
-                        Gallery
-                    </button>
-                    <button
-                        className={viewMode === "LIVE" ? "active" : ""}
-                        onClick={() => setViewMode("LIVE")}
-                    >
-                        Live View
-                    </button>
-                </div>
-            </header>
+            <h1>MASCOT MEMORIES</h1>
+            <div className="subtitle">Tech Fest 2k25</div>
 
-            {viewMode === "LIVE" && photos.length > 0 && (
-                <div className="live-view">
-                    <h2>🔴 Live Feed</h2>
-                    <img src={photos[0].image_url} className="featured-photo" alt="Latest" />
-                    <p className="timestamp">{new Date(photos[0].created_at).toLocaleTimeString()}</p>
-                </div>
-            )}
-
-            {viewMode === "GALLERY" && (
-                <div className="grid">
-                    {photos.map((p) => (
-                        <div key={p.id} className="card">
-                            <img src={p.image_url} loading="lazy" alt="Mascot Photo" />
+            <div className="gallery">
+                {photos.map((p, index) => (
+                    <div key={p.id} className={`photo-card ${index % 2 === 0 ? 'rotate-left' : 'rotate-right'}`}>
+                        <img src={p.image_url} alt="Mascot Photo" loading="lazy" />
+                        <div className="caption">Mascot 2025</div>
+                        <div className="actions">
+                            <a href={p.image_url} download="MascotPolaroid.jpg" className="action-link download-btn">DOWNLOAD</a>
                         </div>
-                    ))}
-                </div>
-            )}
+                    </div>
+                ))}
+            </div>
 
             <style jsx global>{`
-        body {
-          background: #111;
-          color: white;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
-        }
-        .container {
-          max-width: 1200px;
-          margin: 0 auto;
-          text-align: center;
-        }
-        header { margin-bottom: 40px; }
-        h1 { font-size: 2.5rem; margin-bottom: 20px; color: #00e5ff; }
-        
-        .controls button {
-          background: #333;
-          border: 1px solid #555;
-          color: white;
-          padding: 10px 20px;
-          margin: 0 10px;
-          border-radius: 20px;
-          cursor: pointer;
-          font-size: 1rem;
-        }
-        .controls button.active {
-          background: #00e5ff;
-          color: black;
-          border-color: #00e5ff;
-        }
+                :root {
+                    --paper: #fdfbf7;
+                    --ink: #2b2b2b;
+                    --red: #d32f2f;
+                }
 
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 20px;
-        }
-        .card {
-          background: #222;
-          padding: 10px;
-          border-radius: 10px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-          transition: transform 0.2s;
-        }
-        .card:hover { transform: scale(1.02); }
-        .card img {
-          width: 100%;
-          height: auto;
-          border-radius: 5px;
-          display: block;
-        }
+                body {
+                    /* Corkboard Pattern */
+                    background-color: #5c4033;
+                    background-image: repeating-linear-gradient(45deg, #6b4c3e 25%, transparent 25%, transparent 75%, #6b4c3e 75%, #6b4c3e), repeating-linear-gradient(45deg, #6b4c3e 25%, #5c4033 25%, #5c4033 75%, #6b4c3e 75%, #6b4c3e);
+                    background-position: 0 0, 10px 10px;
+                    background-size: 20px 20px;
+                    
+                    color: var(--ink);
+                    font-family: 'Permanent Marker', cursive;
+                    margin: 0; padding: 10px;
+                    min-height: 100vh;
+                }
 
-        .live-view {
-          margin-top: 20px;
-        }
-        .featured-photo {
-          max-width: 90%;
-          max-height: 70vh;
-          border: 5px solid white;
-          box-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
-          border-radius: 10px;
-        }
-        .timestamp { color: #888; margin-top: 10px; }
-      `}</style>
+                h1 {
+                    font-size: 2.5em;
+                    text-align: center;
+                    color: #ffeb3b; 
+                    text-shadow: 3px 3px 0px #000;
+                    margin-bottom: 5px;
+                    transform: rotate(-2deg);
+                }
+
+                .subtitle {
+                    text-align: center; color: #ddd; margin-bottom: 30px; font-size: 1.0em;
+                    text-shadow: 2px 2px 0px #000;
+                }
+
+                .gallery {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 40px;
+                    padding: 10px;
+                    max-width: 1200px;
+                    margin: 0 auto;
+                }
+
+                .photo-card {
+                    background: white;
+                    padding: 10px 10px 50px 10px;
+                    box-shadow: 5px 5px 10px rgba(0,0,0,0.4);
+                    transition: transform 0.3s;
+                    position: relative;
+                    text-align: center;
+                }
+
+                .rotate-left { transform: rotate(-1deg); }
+                .rotate-right { transform: rotate(1deg); }
+
+                .photo-card:hover { 
+                    transform: scale(1.02); 
+                    z-index: 10; 
+                    box-shadow: 10px 10px 20px rgba(0,0,0,0.6);
+                }
+
+                /* Tape effect */
+                .photo-card:before {
+                    content: '';
+                    position: absolute;
+                    top: -10px; left: 50%; transform: translateX(-50%);
+                    width: 60px; height: 25px;
+                    background: rgba(255,255,255,0.4);
+                    border-left: 1px dashed rgba(0,0,0,0.1);
+                    border-right: 1px dashed rgba(0,0,0,0.1);
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                }
+
+                .photo-card img {
+                    width: 100%;
+                    height: auto;
+                    border: 1px solid #ddd;
+                    filter: contrast(110%); 
+                }
+
+                .caption {
+                    position: absolute;
+                    bottom: 25px; left: 0; right: 0;
+                    text-align: center;
+                    font-size: 1.0em;
+                    color: #555;
+                }
+
+                .actions {
+                    position: absolute;
+                    bottom: 5px; left: 0; right: 0;
+                    display: flex; justify-content: space-around;
+                    padding: 0 10px;
+                }
+
+                .action-link {
+                    text-decoration: none;
+                    font-size: 0.8em;
+                    font-weight: bold;
+                    padding: 2px 8px;
+                    border-radius: 3px;
+                    font-family: sans-serif;
+                }
+
+                .download-btn { color: #fff; background: #2196F3; }
+                
+                @media (min-width: 600px) {
+                     h1 { font-size: 3.5em; }
+                }
+            `}</style>
         </div>
     );
 }
