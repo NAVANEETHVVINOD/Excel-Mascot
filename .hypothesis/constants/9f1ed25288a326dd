@@ -1,0 +1,4 @@
+# file: F:\kannan\projects\mascot\mascot_photobooth\python\roboflow_detector.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 0.8, 2.0, 200, 255, 1000, '.jpg', 'API timeout (>2s)', 'CUSTOM', 'Content-Type', 'FLASH', 'LOVE', 'NORMAL', 'RAINBOW', 'SUS', 'WELCOME', 'WINK', 'api_key', 'bbox', 'class', 'class_name', 'confidence', 'glasses', 'hat', 'heart', 'height', 'mascot', 'predictions', 'star', 'unknown', 'utf-8', 'width', 'x', 'y']

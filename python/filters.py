@@ -17,6 +17,97 @@ class FilterType(Enum):
     VINTAGE = "vintage"
     BW = "bw"
     POLAROID = "polaroid"
+    GLITCH = "glitch"
+    CYBERPUNK = "cyberpunk"
+    PASTEL = "pastel"
+
+
+def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "Mascot 2025") -> np.ndarray:
+    """
+    Apply the specified filter to an image.
+    """
+    if filter_type == FilterType.NONE:
+        return image.copy()
+    elif filter_type == FilterType.CARTOON:
+        return apply_cartoon(image)
+    elif filter_type == FilterType.VINTAGE:
+        return apply_vintage(image)
+    elif filter_type == FilterType.BW:
+        return apply_bw(image)
+    elif filter_type == FilterType.POLAROID:
+        return apply_polaroid(image, text)
+    elif filter_type == FilterType.GLITCH:
+        return apply_glitch(image)
+    elif filter_type == FilterType.CYBERPUNK:
+        return apply_cyberpunk(image)
+    elif filter_type == FilterType.PASTEL:
+        return apply_pastel(image)
+    else:
+        return image.copy()
+
+# ... (Existing implementations: apply_cartoon, apply_vintage, apply_bw, apply_polaroid) ...
+
+def apply_glitch(image: np.ndarray) -> np.ndarray:
+    """Simulate RGB shift glitch."""
+    shift = 15
+    rows, cols, _ = image.shape
+    
+    b, g, r = cv2.split(image)
+    
+    # Shift Blue left
+    b_shifted = np.roll(b, -shift, axis=1)
+    # b_shifted[:, -shift:] = 0 # Optional black bar
+    
+    # Shift Red right
+    r_shifted = np.roll(r, shift, axis=1)
+    # r_shifted[:, :shift] = 0
+    
+    return cv2.merge([b_shifted, g, r_shifted])
+
+def apply_cyberpunk(image: np.ndarray) -> np.ndarray:
+    """High contrast, cool tint."""
+    # Simple color grading: boost blue/red
+    b, g, r = cv2.split(image)
+    b = cv2.convertScaleAbs(b, alpha=1.1, beta=10) # More Blue
+    g = cv2.convertScaleAbs(g, alpha=0.9, beta=0) 
+    r = cv2.convertScaleAbs(r, alpha=1.2, beta=10) # More Red -> Purple
+    
+    merged = cv2.merge([b, g, r])
+    # Increase contrast
+    return cv2.convertScaleAbs(merged, alpha=1.2, beta=10)
+
+def apply_pastel(image: np.ndarray) -> np.ndarray:
+    """Soft, bright, low saturation."""
+    # Increase brightness
+    bright = cv2.convertScaleAbs(image, alpha=1.1, beta=40)
+    
+    # Reduce saturation
+    hsv = cv2.cvtColor(bright, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    s = cv2.multiply(s, 0.6).astype(np.uint8)
+    
+    final_hsv = cv2.merge([h, s, v])
+    return cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+
+
+def get_filter_from_string(filter_name: str) -> FilterType:
+    """
+    Convert string filter name to FilterType enum.
+    """
+    name_upper = filter_name.upper()
+    
+    mapping = {
+        "NONE": FilterType.NONE,
+        "CARTOON": FilterType.CARTOON,
+        "VINTAGE": FilterType.VINTAGE,
+        "BW": FilterType.BW,
+        "POLAROID": FilterType.POLAROID,
+        "GLITCH": FilterType.GLITCH,
+        "CYBERPUNK": FilterType.CYBERPUNK,
+        "PASTEL": FilterType.PASTEL,
+    }
+    
+    return mapping.get(name_upper, FilterType.NONE)
 
 
 def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "Mascot 2025") -> np.ndarray:
@@ -160,6 +251,49 @@ def apply_polaroid(image: np.ndarray, text: str = "Mascot 2025") -> np.ndarray:
     )
     
     return polaroid
+
+
+def apply_glitch(image: np.ndarray) -> np.ndarray:
+    """Simulate RGB shift glitch."""
+    shift = 15
+    rows, cols, _ = image.shape
+    
+    b, g, r = cv2.split(image)
+    
+    # Shift Blue left
+    b_shifted = np.roll(b, -shift, axis=1)
+    # b_shifted[:, -shift:] = 0 # Optional black bar
+    
+    # Shift Red right
+    r_shifted = np.roll(r, shift, axis=1)
+    # r_shifted[:, :shift] = 0
+    
+    return cv2.merge([b_shifted, g, r_shifted])
+
+def apply_cyberpunk(image: np.ndarray) -> np.ndarray:
+    """High contrast, cool tint."""
+    # Simple color grading: boost blue/red
+    b, g, r = cv2.split(image)
+    b = cv2.convertScaleAbs(b, alpha=1.1, beta=10) # More Blue
+    g = cv2.convertScaleAbs(g, alpha=0.9, beta=0) 
+    r = cv2.convertScaleAbs(r, alpha=1.2, beta=10) # More Red -> Purple
+    
+    merged = cv2.merge([b, g, r])
+    # Increase contrast
+    return cv2.convertScaleAbs(merged, alpha=1.2, beta=10)
+
+def apply_pastel(image: np.ndarray) -> np.ndarray:
+    """Soft, bright, low saturation."""
+    # Increase brightness
+    bright = cv2.convertScaleAbs(image, alpha=1.1, beta=40)
+    
+    # Reduce saturation
+    hsv = cv2.cvtColor(bright, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    s = cv2.multiply(s, 0.6).astype(np.uint8)
+    
+    final_hsv = cv2.merge([h, s, v])
+    return cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
 
 
 def get_filter_from_string(filter_name: str) -> FilterType:

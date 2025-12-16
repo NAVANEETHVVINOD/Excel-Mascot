@@ -14,6 +14,8 @@ from supabase_upload import upload_photo
 from roboflow_detector import RoboflowDetector, AnimationType
 from capture_modes import CaptureManager
 from filters import get_filter_from_string
+from remote_control import start_remote_thread
+from settings import settings
 
 # Configuration
 PHOTO_DIR = web_gallery.PHOTO_DIR
@@ -30,10 +32,13 @@ ROBOFLOW_ENABLED = bool(ROBOFLOW_API_KEY and ROBOFLOW_MODEL_ID)
 def main():
     print("🚀 Starting Mascot Photo Booth System...")
     
-    # 1. Start Web Gallery
+    # 1. Start Web Gallery & Remote Control
     web_gallery.start_gallery_thread()
-    print(f"🌐 Gallery: {web_gallery.gallery_url}")
-    print(f"📷 QR Code generated for mobile access.")
+    start_remote_thread()
+    
+    print(f"🌐 Local Gallery: {web_gallery.gallery_url}")
+    print(f"☁️ Cloud Site: {settings.vercel_app_url}")
+    print("📷 QR Code pointing to Cloud Site.")
 
     # 2. Init Arduino Bridge
     arduino = ArduinoBridge(port="COM3", baud_rate=9600)
@@ -124,8 +129,12 @@ def main():
                 # 2. Capture Sequence
                 print("📸 Starting Capture Sequence!")
                 
-                # Show Countdown
-                capture_manager.show_countdown(cap)
+                # Trigger LED
+                arduino.send_command("PHOTO")
+                time.sleep(0.5) # Short delay for LED to turn on if needed? Or just capture.
+                
+                # Removed Countdown as per request
+                # capture_manager.show_countdown(cap)
                 
                 # 3. Capture based on Mode
                 mode = web_gallery.current_mode

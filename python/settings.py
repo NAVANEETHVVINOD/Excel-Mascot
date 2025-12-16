@@ -22,6 +22,7 @@ class Config:
     roboflow_api_key: Optional[str] = None
     roboflow_model_id: Optional[str] = None
     roboflow_confidence: float = 0.8
+    vercel_app_url: str = "https://excel-mascot.vercel.app/"
 
     @classmethod
     def load(cls):
@@ -42,13 +43,16 @@ class Config:
         roboflow_model = os.environ.get("ROBOFLOW_MODEL_ID")
         roboflow_conf = float(os.environ.get("ROBOFLOW_CONFIDENCE", "0.8"))
         
+        vercel_url = os.environ.get("VERCEL_APP_URL") or os.environ.get("NEXT_PUBLIC_VERCEL_URL", "https://excel-mascot.vercel.app/")
+        
         return cls(
             supabase_url=url,
             supabase_key=key,
             bucket_name=bucket,
             roboflow_api_key=roboflow_key,
             roboflow_model_id=roboflow_model,
-            roboflow_confidence=roboflow_conf
+            roboflow_confidence=roboflow_conf,
+            vercel_app_url=vercel_url
         )
 
     def validate(self):
