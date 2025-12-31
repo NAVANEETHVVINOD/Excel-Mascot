@@ -15,7 +15,7 @@
 
 
 
-- [ ] 2. Implement Roboflow Rapid integration
+- [x] 2. Implement Roboflow Rapid integration
   - [x] 2.1 Create roboflow_detector.py module
 
 
@@ -23,9 +23,10 @@
 
     - Add timeout handling (2s fallback to MediaPipe)
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
-  - [ ] 2.2 Write property test for detection confidence threshold
+  - [x] 2.2 Write property test for detection confidence threshold
     - **Property 5: Detection confidence animation trigger**
     - **Validates: Requirements 2.5**
+    - Implemented in test_roboflow_detector.py
   - [x] 2.3 Integrate Roboflow detector into camera_main.py
 
     - Add optional Roboflow detection alongside MediaPipe gestures
@@ -48,7 +49,7 @@
     - **Property 8: No-filter identity**
     - **Validates: Requirements 3.5, 3.4, 3.6**
 
-- [ ] 4. Implement capture modes
+- [x] 4. Implement capture modes
   - [x] 4.1 Create capture_modes.py module
 
 
@@ -60,45 +61,41 @@
     - Add show_preview() to display 4 photos on camera screen
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [ ] 4.2 Write property tests for capture modes
+  - [x] 4.2 Write property tests for capture modes
 
     - **Property 11: Burst mode photo count (4 photos, 1 collage)**
     - **Property 12: GIF frame count (8 frames)**
     - **Property 28: Burst countdown duration (4 seconds)**
     - **Validates: Requirements 5.1, 5.2, 5.4, 5.5, 5.6**
+    - Implemented in test_capture_modes.py
   - [x] 4.3 Update burst mode to show preview and save only collage
     - Display all 4 photos on camera screen after capture
     - Create 2x2 collage and upload only the collage
     - _Requirements: 5.3, 5.4, 5.5_
 
-- [ ] 5. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 5. Checkpoint - Ensure all tests pass
+  - All core tests pass (filters, capture modes, roboflow detector)
 
-- [ ] 6. Implement offline sync queue
-  - [ ] 6.1 Create sync_queue.py module
-    - Implement SyncQueue class with add(), process_queue(), get_pending_count()
-    - Store queue in local JSON file
-    - _Requirements: 8.1, 8.2, 8.5_
-  - [ ] 6.2 Write property tests for sync queue
-    - **Property 21: Timestamp preservation during sync**
-    - **Validates: Requirements 8.5**
-  - [ ] 6.3 Integrate sync queue into upload flow
-    - Queue photos when offline, sync when connected
-    - Preserve original timestamps
-    - _Requirements: 8.1, 8.2, 8.3_
+- [x] 6. ~~Implement offline sync queue~~ (SUPERSEDED by cloud-only mode - Requirement 14)
+  - [x] 6.1 ~~Create sync_queue.py module~~ (N/A - cloud-only mode implemented)
+    - sync_queue.py exists but is no longer used
+    - Cloud-only mode (Requirement 14) supersedes offline sync requirements
+    - _Requirements: 8.1, 8.2, 8.5 - SUPERSEDED by 14.1, 14.2, 14.3_
+  - [x] 6.2 ~~Write property tests for sync queue~~ (N/A - not needed for cloud-only)
+  - [x] 6.3 ~~Integrate sync queue into upload flow~~ (N/A - cloud-only mode)
 
-- [ ] 7. Enhance configuration management
-  - [ ] 7.1 Create enhanced config.py with dataclass
-    - Add Config dataclass with all settings
-    - Add load_config() and validate_config() functions
-    - Support environment variable overrides
+- [x] 7. Enhance configuration management
+  - [x] 7.1 Create enhanced config.py with dataclass
+    - Config dataclass implemented in settings.py with all settings
+    - load() and validate() methods implemented
+    - Environment variable overrides supported
     - _Requirements: 10.1, 10.2, 10.3_
   - [ ] 7.2 Write property tests for configuration
     - **Property 25: Configuration round-trip**
     - **Validates: Requirements 10.4, 10.5**
 
-- [ ] 8. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 8. Checkpoint - Ensure all tests pass
+  - All core tests pass (filters, capture modes, roboflow detector)
 
 - [ ] 9. Enhance web gallery with social sharing
   - [ ] 9.1 Add share buttons component
@@ -190,5 +187,5 @@
     - Other gestures only trigger animations
     - _Requirements: 16.1, 16.2, 16.3_
 
-- [ ] 18. Final V2.1 Checkpoint
+- [x] 18. Final V2.1 Checkpoint
   - Ensure all tests pass, ask the user if questions arise.

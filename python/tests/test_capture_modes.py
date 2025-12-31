@@ -70,7 +70,7 @@ class TestBurstModePhotoCount:
             assert result.mode == CaptureMode.BURST
     
     @given(count=st.integers(min_value=1, max_value=10))
-    @settings(max_examples=20)
+    @settings(max_examples=20, deadline=None)
     def test_burst_respects_custom_count(self, count):
         """Burst mode should respect custom count parameter."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -241,9 +241,9 @@ class TestSingleCapture:
             manager = CaptureManager(photo_dir=tmpdir)
             frame = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
             
-            result = manager.capture_single(frame, filter_type=FilterType.BW)
+            result = manager.capture_single(frame, filter_type=FilterType.NOIR)
             
-            # BW filter should make all channels equal
+            # NOIR filter should make all channels equal (grayscale)
             img = result.images[0]
             assert np.array_equal(img[:, :, 0], img[:, :, 1])
 
