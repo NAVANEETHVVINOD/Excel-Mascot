@@ -232,10 +232,23 @@ export default function Gallery() {
                     top: 0; left: 0;
                     width: 100%; height: 100%;
                     background: 
-                        radial-gradient(ellipse at 20% 30%, rgba(255, 140, 0, 0.08) 0%, transparent 50%),
-                        radial-gradient(ellipse at 80% 70%, rgba(255, 215, 0, 0.05) 0%, transparent 50%),
-                        url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-                    opacity: 0.4;
+                        linear-gradient(180deg, rgba(5, 5, 5, 0.7) 0%, rgba(5, 5, 5, 0.85) 100%),
+                        url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1920&q=80');
+                    background-size: cover;
+                    background-position: center;
+                    background-attachment: fixed;
+                    filter: grayscale(100%) brightness(0.3) contrast(1.2);
+                    z-index: -2;
+                }
+
+                .bg-overlay::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0;
+                    width: 100%; height: 100%;
+                    background: 
+                        radial-gradient(ellipse at 30% 20%, rgba(255, 140, 0, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
                     z-index: -1;
                 }
 

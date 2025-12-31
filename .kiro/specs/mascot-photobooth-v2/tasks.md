@@ -189,3 +189,24 @@
 
 - [x] 18. Final V2.1 Checkpoint
   - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 19. Update web gallery with enhanced timeline design
+  - [x] 19.1 Remove navbar and add MASCOT heading
+    - Remove navigation bar (single page app)
+    - Add large "MASCOT" title with gold glow effect
+    - Add subtitle with version info
+    - _Requirements: 11.2_
+  - [x] 19.2 Implement animated timeline on scroll
+    - Timeline line grows/animates as user scrolls
+    - Curved connectors draw from timeline to photos
+    - Golden dots appear with pop animation
+    - Photos alternate left/right along timeline
+    - _Requirements: 11.4_
+  - [x] 19.3 Add B&W to color hover effect on photos
+    - Photos display in grayscale by default
+    - Smooth transition to full color on hover
+    - _Requirements: 11.1_
+  - [x] 19.4 Add vintage tech background
+    - Dark background with vintage computer room aesthetic
+    - Grayscale filter with gold/orange gradient overlay
+    - _Requirements: 11.2_
