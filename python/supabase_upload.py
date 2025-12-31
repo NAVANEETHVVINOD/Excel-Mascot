@@ -67,7 +67,7 @@ def upload_photo(local_path, metadata=None):
 def upload_bytes(file_bytes, filename, metadata=None):
     """
     Uploads bytes directly to Supabase without local file.
-    Note: Does NOT support offline queuing (data lost if upload fails).
+    Cloud-only mode: Does NOT save locally if upload fails.
     """
     storage_path = filename
     public_url = None
@@ -76,10 +76,17 @@ def upload_bytes(file_bytes, filename, metadata=None):
         try:
             print(f"☁️ Uploading Bytes {filename} (Attempt {attempt}/3)...")
             
+            # Determine content type
+            content_type = "image/jpeg"
+            if filename.endswith(".gif"):
+                content_type = "image/gif"
+            elif filename.endswith(".png"):
+                content_type = "image/png"
+            
             res = supabase.storage.from_(BUCKET_NAME).upload(
                 path=storage_path,
                 file=file_bytes,
-                file_options={"content-type": "image/jpeg"}
+                file_options={"content-type": content_type}
             )
             
             public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
@@ -97,23 +104,9 @@ def upload_bytes(file_bytes, filename, metadata=None):
             print(f"⚠️ Bytes Upload Failed (Attempt {attempt}): {e}")
             time.sleep(1)
 
-    print("❌ Upload failed. Saving to offline queue.")
-    
-    # Save bytes to local file for syncing
-    try:
-        if not os.path.exists("offline_cache"):
-            os.makedirs("offline_cache")
-            
-        local_filename = f"offline_cache/{filename}"
-        with open(local_filename, "wb") as f:
-            f.write(file_bytes)
-            
-        sync_queue.add(local_filename, metadata)
-        print(f"✅ Saved to offline queue: {local_filename}")
-        return None
-    except Exception as save_err:
-        print(f"❌ CRITICAL: Could not check save offline: {save_err}")
-        return None
+    # Cloud-only mode: Do NOT save locally
+    print("❌ Upload failed after 3 attempts. Photo discarded (cloud-only mode).")
+    return None
 
 def process_queue():
     """Process pending items in the offline queue."""

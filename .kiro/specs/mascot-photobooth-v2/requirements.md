@@ -4,6 +4,8 @@
 
 This document specifies the requirements for Mascot Photo Booth V2 - an enhanced IoT photo booth system that combines gesture-based photo capture with AI-powered object detection (Roboflow Rapid), social sharing capabilities, and an improved web gallery experience. The system upgrades the existing OpenCV/MediaPipe implementation with optional Roboflow integration for custom object detection, adds social sharing features, and introduces new photo booth modes.
 
+**V2.1 Updates**: Added requirements for Excel Techfest themed UI design, improved filter selection feedback, camera window controls, and cloud-only storage mode.
+
 ## Glossary
 
 - **Photo_Booth_System**: The complete hardware and software system that captures, processes, and shares photos
@@ -48,12 +50,13 @@ This document specifies the requirements for Mascot Photo Booth V2 - an enhanced
 
 #### Acceptance Criteria
 
-1. WHEN a user selects the cartoon filter THEN the Photo_Booth_System SHALL apply edge detection and color quantization to the captured image
-2. WHEN a user selects the vintage filter THEN the Photo_Booth_System SHALL apply sepia tones and noise grain to the captured image
-3. WHEN a user selects the black-and-white filter THEN the Photo_Booth_System SHALL convert the captured image to grayscale
-4. WHEN a user selects the polaroid filter THEN the Photo_Booth_System SHALL add a white border frame with timestamp text
-5. WHEN no filter is selected THEN the Photo_Booth_System SHALL save the original unmodified image
-6. WHEN a filter is applied THEN the Photo_Booth_System SHALL complete processing within 200 milliseconds
+1. WHEN a user selects the glitch filter THEN the Photo_Booth_System SHALL apply RGB channel shifting and scan line effects to the captured image
+2. WHEN a user selects the neon/cyberpunk filter THEN the Photo_Booth_System SHALL apply high contrast with neon color enhancement
+3. WHEN a user selects the dreamy/pastel filter THEN the Photo_Booth_System SHALL apply soft blur with pastel color tones
+4. WHEN a user selects the retro/polaroid filter THEN the Photo_Booth_System SHALL add a white border frame with timestamp text
+5. WHEN a user selects the noir/black-and-white filter THEN the Photo_Booth_System SHALL convert the captured image to high contrast grayscale
+6. WHEN no filter is explicitly selected THEN the Photo_Booth_System SHALL save the original unmodified image
+7. WHEN a filter is applied THEN the Photo_Booth_System SHALL complete processing within 200 milliseconds
 
 ### Requirement 4
 
@@ -73,11 +76,13 @@ This document specifies the requirements for Mascot Photo Booth V2 - an enhanced
 
 #### Acceptance Criteria
 
-1. WHEN burst mode is selected THEN the Photo_Booth_System SHALL capture 4 photos in rapid succession with 500ms intervals
-2. WHEN GIF mode is selected THEN the Photo_Booth_System SHALL capture 8 frames and combine them into an animated GIF
-3. WHEN countdown mode is enabled THEN the Photo_Booth_System SHALL display a 3-second visual countdown before capture
-4. WHEN a capture mode completes THEN the Photo_Booth_System SHALL display a preview of all captured images
-5. WHEN burst mode captures are complete THEN the Photo_Booth_System SHALL create a collage image combining all 4 photos
+1. WHEN burst mode is selected THEN the Photo_Booth_System SHALL display a 4-second countdown timer on the camera display
+2. WHEN burst mode countdown completes THEN the Photo_Booth_System SHALL capture 4 photos in rapid succession with 500ms intervals
+3. WHEN burst mode captures are complete THEN the Photo_Booth_System SHALL display all 4 photos on the camera screen as a preview
+4. WHEN burst mode captures are complete THEN the Photo_Booth_System SHALL create a single collage image combining all 4 photos in a 2x2 grid
+5. WHEN burst mode collage is created THEN the Photo_Booth_System SHALL save only the single collage image to Cloud_Storage
+6. WHEN GIF mode is selected THEN the Photo_Booth_System SHALL capture 8 frames and combine them into an animated GIF
+7. WHEN countdown mode is enabled THEN the Photo_Booth_System SHALL display a visual countdown timer on the camera display before capture
 
 ### Requirement 6
 
@@ -139,3 +144,68 @@ This document specifies the requirements for Mascot Photo Booth V2 - an enhanced
 4. WHEN serializing configuration to disk THEN the Photo_Booth_System SHALL encode using JSON format
 5. WHEN parsing configuration from disk THEN the Photo_Booth_System SHALL validate against the configuration schema
 
+
+
+### Requirement 11
+
+**User Story:** As a photo booth user, I want the web gallery to match the Excel Techfest 2025 design theme, so that the experience feels cohesive with the event branding.
+
+#### Acceptance Criteria
+
+1. WHEN viewing the Web_Gallery THEN the system SHALL display photos in a polaroid-style card format with pin decorations at the top
+2. WHEN viewing the Web_Gallery THEN the system SHALL use a dark background with the Excel 2025 gold/orange color scheme
+3. WHEN viewing a photo card THEN the system SHALL display metadata including "REC_DATE" and "LOC" fields in monospace font
+4. WHEN viewing the Web_Gallery THEN the system SHALL display a vertical timeline connector between photo cards
+5. WHEN viewing the Web_Gallery THEN the system SHALL include the Excel 2025 logo and navigation header matching the main event site
+
+### Requirement 12
+
+**User Story:** As a photo booth user, I want clear visual feedback on which filter is currently selected, so that I know what effect will be applied to my photo.
+
+#### Acceptance Criteria
+
+1. WHEN a filter button is clicked THEN the Web_Gallery SHALL highlight the selected filter button with a distinct active state matching the capture mode button styling
+2. WHEN viewing the filter controls THEN the Web_Gallery SHALL NOT display a reset/none option as a separate button
+3. WHEN the Photo_Booth_System receives a filter command THEN the system SHALL display the current filter name on the camera preview
+4. WHEN the last selected filter is clicked again THEN the Web_Gallery SHALL deselect it and return to no filter mode
+
+### Requirement 13
+
+**User Story:** As a photo booth operator, I want the camera window to have standard window controls, so that I can minimize or close the application easily.
+
+#### Acceptance Criteria
+
+1. WHEN the camera window is displayed THEN the Photo_Booth_System SHALL provide a close button to exit the application
+2. WHEN the camera window is displayed THEN the Photo_Booth_System SHALL provide a minimize button to minimize the window
+3. WHEN the user presses the Escape key THEN the Photo_Booth_System SHALL exit fullscreen mode
+4. WHEN the user presses 'Q' key THEN the Photo_Booth_System SHALL close the application gracefully
+
+### Requirement 14
+
+**User Story:** As a photo booth operator, I want photos to only be saved to Supabase cloud storage, so that I don't have to manage local storage and offline queues.
+
+#### Acceptance Criteria
+
+1. WHEN a photo is captured THEN the Photo_Booth_System SHALL upload directly to Cloud_Storage without saving locally
+2. WHEN the upload fails THEN the Photo_Booth_System SHALL display an error message and discard the photo
+3. WHEN cloud-only mode is enabled THEN the Photo_Booth_System SHALL NOT create local photo files or offline cache
+
+### Requirement 15
+
+**User Story:** As a photo booth user, I want my photo to appear on the website immediately after capture, so that I can see and share it right away.
+
+#### Acceptance Criteria
+
+1. WHEN a photo is successfully uploaded THEN the Web_Gallery SHALL display the new photo within 2 seconds via realtime subscription
+2. WHEN viewing the gallery THEN the Web_Gallery SHALL show a loading indicator while photos are being fetched
+3. WHEN a new photo appears THEN the Web_Gallery SHALL animate the photo card entrance for visual feedback
+
+### Requirement 16
+
+**User Story:** As a photo booth user, I want photos to only be captured when I show a thumbs up gesture, so that accidental captures don't occur.
+
+#### Acceptance Criteria
+
+1. WHEN a thumbs-up gesture is detected THEN the Photo_Booth_System SHALL trigger photo capture
+2. WHEN any other gesture is detected THEN the Photo_Booth_System SHALL NOT trigger photo capture
+3. WHEN peace or pointing gestures are detected THEN the Photo_Booth_System SHALL only trigger mascot animations without capturing photos

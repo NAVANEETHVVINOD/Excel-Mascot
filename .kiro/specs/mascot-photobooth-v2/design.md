@@ -9,8 +9,16 @@ The key enhancements over V1 include:
 - Social sharing with QR codes and direct links
 - Multiple capture modes (single, burst, GIF)
 - Admin dashboard with analytics
-- Improved offline resilience with sync queue
+- Cloud-only storage mode (no offline queue)
 - Enhanced mascot animations based on AI detections
+- Excel Techfest 2025 themed UI with polaroid-style photo cards
+
+**V2.1 Updates**:
+- Excel Techfest design theme with polaroid cards and timeline layout
+- Filter selection visual feedback (no reset button)
+- Camera window controls (close, minimize, ESC/Q keys)
+- Burst mode: 4-second countdown, 4 photos, preview on camera, single collage output
+- Thumbs-up only triggers photo capture
 
 ## Architecture
 
@@ -119,16 +127,18 @@ Image processing filters using OpenCV.
 ```python
 class FilterType(Enum):
     NONE = "none"
-    CARTOON = "cartoon"
-    VINTAGE = "vintage"
-    BW = "bw"
-    POLAROID = "polaroid"
+    GLITCH = "glitch"      # RGB channel shifting, scan lines
+    NEON = "neon"          # High contrast, neon color enhancement (cyberpunk)
+    DREAMY = "dreamy"      # Soft blur, pastel tones
+    RETRO = "retro"        # Polaroid border with timestamp
+    NOIR = "noir"          # High contrast black and white
 
 def apply_filter(image: np.ndarray, filter_type: FilterType) -> np.ndarray
-def apply_cartoon(image: np.ndarray) -> np.ndarray
-def apply_vintage(image: np.ndarray) -> np.ndarray
-def apply_bw(image: np.ndarray) -> np.ndarray
-def apply_polaroid(image: np.ndarray, text: str = "Mascot 2025") -> np.ndarray
+def apply_glitch(image: np.ndarray) -> np.ndarray
+def apply_neon(image: np.ndarray) -> np.ndarray
+def apply_dreamy(image: np.ndarray) -> np.ndarray
+def apply_retro(image: np.ndarray, text: str = "EXCEL 2025") -> np.ndarray
+def apply_noir(image: np.ndarray) -> np.ndarray
 ```
 
 ### 4. Capture Modes Module (`capture_modes.py`)
@@ -146,15 +156,27 @@ class CaptureResult:
     mode: CaptureMode
     images: List[np.ndarray]
     timestamps: List[float]
-    output_path: str
+    collage_image: Optional[np.ndarray]  # For burst mode
+    gif_bytes: Optional[bytes]  # For GIF mode
+    output_path: Optional[str]
 
 class CaptureManager:
     def __init__(self, photo_dir: str)
-    def capture_single(self, frame: np.ndarray, filter_type: FilterType) -> CaptureResult
-    def capture_burst(self, cap: cv2.VideoCapture, filter_type: FilterType, count: int = 4, interval_ms: int = 500) -> CaptureResult
-    def capture_gif(self, cap: cv2.VideoCapture, frames: int = 8, interval_ms: int = 200) -> CaptureResult
+    def capture_single(self, frame: np.ndarray, filter_type: FilterType, save_to_disk: bool = False) -> CaptureResult
+    def capture_burst(self, cap: cv2.VideoCapture, filter_type: FilterType, count: int = 4, interval_ms: int = 500, save_to_disk: bool = False) -> CaptureResult
+    def capture_gif(self, cap: cv2.VideoCapture, frames: int = 8, interval_ms: int = 200, filter_type: FilterType = None, save_to_disk: bool = False) -> CaptureResult
     def create_collage(self, images: List[np.ndarray]) -> np.ndarray
+    def show_countdown(self, cap: cv2.VideoCapture, seconds: int = 4) -> None
+    def show_preview(self, images: List[np.ndarray], duration_ms: int = 2000) -> None
 ```
+
+**Burst Mode Flow:**
+1. User triggers burst mode via thumbs-up gesture
+2. System displays 4-second countdown on camera display
+3. System captures 4 photos with 500ms intervals
+4. System displays all 4 photos as preview on camera screen
+5. System creates 2x2 collage from the 4 photos
+6. System uploads only the collage image to Supabase
 
 ### 5. Sync Queue Module (`sync_queue.py`)
 
@@ -237,9 +259,43 @@ class ArduinoBridge:
 ### 8. Web Gallery Components
 
 #### Gallery Page (`pages/index.js`)
+- Excel Techfest 2025 themed design
+- Polaroid-style photo cards with pin decorations
+- Vertical timeline connector between photos
 - Realtime photo grid with Supabase subscription
-- Live view mode for latest photo
-- Filter by date/filter type
+- Filter buttons with active state highlighting (no reset button)
+- Capture mode buttons with active state
+
+**Design Theme:**
+- Dark background (#050505)
+- Gold/orange accent colors (#FFD700, #FF8C00)
+- Monospace fonts (Share Tech Mono, Orbitron)
+- Polaroid cards with white border, shadow, and pin decoration
+- Timeline layout with golden vertical connector
+
+#### Polaroid Card Component
+```typescript
+interface PolaroidCardProps {
+    photo: Photo;
+    index: number;
+}
+// Displays:
+// - Pin decoration at top
+// - Photo image
+// - REC_DATE: timestamp
+// - LOC: "College Ground" or location
+// - [EXCELETED] badge
+```
+
+#### Filter Controls
+```typescript
+interface FilterControlsProps {
+    activeFilter: string | null;
+    onFilterChange: (filter: string | null) => void;
+}
+// Filters: GLITCH, NEON, DREAMY, RETRO, NOIR
+// Click active filter to deselect (no reset button)
+```
 
 #### Share Component (`components/ShareButtons.js`)
 ```typescript
@@ -263,6 +319,29 @@ interface QRCodeProps {
 - Analytics charts (photos/day, filter usage, gesture counts)
 - CSV export functionality
 - Moderation queue
+
+### 9. Camera Window Controls
+
+The camera window will include custom controls for better UX:
+
+```python
+class CameraWindow:
+    def __init__(self, window_name: str = "Mascot View")
+    def create_window(self, fullscreen: bool = True) -> None
+    def add_controls_overlay(self, frame: np.ndarray) -> np.ndarray
+    def handle_key_events(self, key: int) -> str  # Returns action: "close", "minimize", "toggle_fullscreen", "none"
+```
+
+**Key Bindings:**
+- `Q` or `q`: Close application
+- `ESC`: Exit fullscreen / toggle windowed mode
+- `M` or `m`: Minimize window
+
+**Overlay Controls:**
+- Close button (X) in top-right corner
+- Minimize button (-) next to close
+- Current filter name display
+- Current mode display
 
 ## Data Models
 
@@ -357,12 +436,12 @@ CREATE TABLE analytics (
 *For any* Roboflow detection with confidence above 0.8, the system should trigger the corresponding custom animation.
 **Validates: Requirements 2.5**
 
-### Property 6: Black-and-white filter correctness
-*For any* input image, applying the BW filter should result in an image where all pixels have equal R, G, and B values.
-**Validates: Requirements 3.3**
+### Property 6: Noir filter correctness
+*For any* input image, applying the NOIR filter should result in an image where all pixels have equal R, G, and B values (grayscale).
+**Validates: Requirements 3.5**
 
-### Property 7: Polaroid filter dimension increase
-*For any* input image with dimensions (H, W), applying the polaroid filter should result in an image with dimensions greater than (H, W) due to the added border.
+### Property 7: Retro filter dimension increase
+*For any* input image with dimensions (H, W), applying the RETRO filter should result in an image with dimensions greater than (H, W) due to the added polaroid border.
 **Validates: Requirements 3.4**
 
 ### Property 8: No-filter identity
@@ -378,16 +457,16 @@ CREATE TABLE analytics (
 **Validates: Requirements 4.4**
 
 ### Property 11: Burst mode photo count
-*For any* burst mode capture, the system should produce exactly 4 photos.
-**Validates: Requirements 5.1**
+*For any* burst mode capture, the system should capture exactly 4 photos and produce exactly 1 collage image.
+**Validates: Requirements 5.2, 5.4, 5.5**
 
 ### Property 12: GIF frame count
 *For any* GIF mode capture, the resulting GIF should contain exactly 8 frames.
-**Validates: Requirements 5.2**
+**Validates: Requirements 5.6**
 
 ### Property 13: Collage composition
-*For any* burst mode result, the collage image should have dimensions that accommodate all 4 source images.
-**Validates: Requirements 5.5**
+*For any* burst mode result, the collage image should have dimensions that accommodate all 4 source images in a 2x2 grid layout.
+**Validates: Requirements 5.4**
 
 ### Property 14: Moderation mode visibility
 *For any* photo uploaded while moderation mode is enabled, the photo should not be visible in the public gallery until approved.
@@ -436,6 +515,18 @@ CREATE TABLE analytics (
 ### Property 25: Configuration round-trip
 *For any* valid configuration object, serializing to JSON and parsing back should produce an equivalent configuration.
 **Validates: Requirements 10.4, 10.5**
+
+### Property 26: Thumbs-up only capture trigger
+*For any* gesture detection that is not THUMBS_UP, the system should not trigger photo capture.
+**Validates: Requirements 16.1, 16.2, 16.3**
+
+### Property 27: Filter toggle behavior
+*For any* filter selection, clicking the same filter again should deselect it and return to no-filter mode.
+**Validates: Requirements 12.4**
+
+### Property 28: Burst countdown duration
+*For any* burst mode capture, the countdown should display for exactly 4 seconds before capture begins.
+**Validates: Requirements 5.1**
 
 ## Error Handling
 

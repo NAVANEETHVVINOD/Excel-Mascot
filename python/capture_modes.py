@@ -103,16 +103,20 @@ class CaptureManager:
         filter_type: FilterType = FilterType.NONE,
         count: int = None,
         interval_ms: int = None,
-        save_to_disk: bool = True
+        save_to_disk: bool = True,
+        window_name: str = "Mascot View"
     ) -> CaptureResult:
         """
-        Capture multiple photos in rapid succession.
+        Capture multiple photos in rapid succession with 4-second countdown.
+        Shows preview of all 4 photos on camera screen.
+        Only saves the collage image (not individual photos).
         
         Args:
             cap: OpenCV VideoCapture object
             filter_type: Filter to apply to all photos
             count: Number of photos (default: 4)
             interval_ms: Interval between captures in ms (default: 500)
+            window_name: Name of display window for preview
             
         Returns:
             CaptureResult with burst images and collage
@@ -124,6 +128,7 @@ class CaptureManager:
         timestamps = []
         base_timestamp = int(time.time())
         
+        # Capture 4 photos with flash effect between each
         for i in range(count):
             ret, frame = cap.read()
             if ret:
@@ -132,16 +137,33 @@ class CaptureManager:
                 images.append(filtered)
                 timestamps.append(timestamp)
                 
-                # Save individual photo
-                filename = f"burst_{base_timestamp}_{i+1}.jpg"
-                filepath = os.path.join(self.photo_dir, filename)
-                if save_to_disk:
-                    cv2.imwrite(filepath, filtered)
+                # Show capture flash
+                h, w = frame.shape[:2]
+                flash_frame = frame.copy()
+                cv2.rectangle(flash_frame, (0, 0), (w, h), (255, 255, 255), -1)
+                cv2.imshow(window_name, flash_frame)
+                cv2.waitKey(50)
+                
+                # Show captured image briefly
+                cv2.imshow(window_name, filtered)
+                cv2.waitKey(100)
             
             if i < count - 1:
-                time.sleep(interval_ms / 1000.0)
+                # Show countdown to next capture
+                remaining = count - i - 1
+                for _ in range(int(interval_ms / 50)):
+                    ret, preview = cap.read()
+                    if ret:
+                        cv2.putText(preview, f"Photo {i+2}/{count} in...", 
+                                    (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+                        cv2.imshow(window_name, preview)
+                        cv2.waitKey(50)
         
-        # Create collage
+        # Show preview of all 4 photos for 2 seconds
+        if images:
+            self.show_preview(images, window_name=window_name, duration_ms=2000)
+        
+        # Create collage (only this gets uploaded)
         collage = self.create_collage(images)
         collage_filename = f"collage_{base_timestamp}.jpg"
         collage_path = os.path.join(self.photo_dir, collage_filename)
@@ -276,7 +298,7 @@ class CaptureManager:
         self,
         cap: cv2.VideoCapture,
         window_name: str = "Mascot View",
-        seconds: int = 3
+        seconds: int = 4
     ) -> None:
         """
         Display countdown on screen before capture.
@@ -284,7 +306,7 @@ class CaptureManager:
         Args:
             cap: OpenCV VideoCapture object
             window_name: Name of display window
-            seconds: Countdown duration
+            seconds: Countdown duration (default: 4 for burst mode)
         """
         for i in range(seconds, 0, -1):
             start = time.time()
@@ -307,12 +329,54 @@ class CaptureManager:
                     # Draw shadow
                     cv2.putText(display, text, (text_x + 3, text_y + 3),
                                 font, font_scale, (0, 0, 0), thickness + 2)
-                    # Draw text
+                    # Draw text (gold color)
                     cv2.putText(display, text, (text_x, text_y),
-                                font, font_scale, (0, 255, 255), thickness)
+                                font, font_scale, (0, 215, 255), thickness)
+                    
+                    # Draw "GET READY!" text
+                    ready_text = "GET READY!"
+                    ready_size = cv2.getTextSize(ready_text, font, 1.5, 3)[0]
+                    ready_x = (w - ready_size[0]) // 2
+                    cv2.putText(display, ready_text, (ready_x, text_y + 80),
+                                font, 1.5, (0, 255, 0), 3)
                     
                     cv2.imshow(window_name, display)
                     cv2.waitKey(1)
+    
+    def show_preview(
+        self,
+        images: List[np.ndarray],
+        window_name: str = "Mascot View",
+        duration_ms: int = 2000
+    ) -> None:
+        """
+        Display preview of captured images as a 2x2 grid.
+        
+        Args:
+            images: List of captured images
+            window_name: Name of display window
+            duration_ms: How long to show preview
+        """
+        if not images:
+            return
+        
+        # Create preview collage
+        preview = self.create_collage(images)
+        
+        # Add "PREVIEW" text overlay
+        h, w = preview.shape[:2]
+        overlay = preview.copy()
+        
+        # Semi-transparent banner at top
+        cv2.rectangle(overlay, (0, 0), (w, 60), (0, 0, 0), -1)
+        preview = cv2.addWeighted(overlay, 0.7, preview, 0.3, 0)
+        
+        # Add text
+        cv2.putText(preview, "BURST PREVIEW - Uploading...", (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 215, 255), 2)
+        
+        cv2.imshow(window_name, preview)
+        cv2.waitKey(duration_ms)
 
 
 def get_gif_frame_count(gif_path: str) -> int:

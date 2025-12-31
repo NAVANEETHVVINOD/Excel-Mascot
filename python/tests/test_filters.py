@@ -2,8 +2,8 @@
 Property-based tests for Filters module.
 
 Tests:
-- Property 6: Black-and-white filter correctness
-- Property 7: Polaroid filter dimension increase
+- Property 6: Noir filter correctness (black and white)
+- Property 7: Retro filter dimension increase (polaroid)
 - Property 8: No-filter identity
 """
 
@@ -18,10 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from filters import (
     FilterType,
     apply_filter,
-    apply_bw,
-    apply_polaroid,
-    apply_cartoon,
-    apply_vintage,
+    apply_noir,
+    apply_retro,
+    apply_glitch,
+    apply_neon,
+    apply_dreamy,
     get_filter_from_string
 )
 
@@ -36,20 +37,20 @@ def image_strategy(min_size=10, max_size=200):
     )
 
 
-class TestBWFilterCorrectness:
+class TestNoirFilterCorrectness:
     """
-    **Feature: mascot-photobooth-v2, Property 6: Black-and-white filter correctness**
-    **Validates: Requirements 3.3**
+    **Feature: mascot-photobooth-v2, Property 6: Noir filter correctness**
+    **Validates: Requirements 3.5**
     
-    For any input image, applying the BW filter should result in an image 
-    where all pixels have equal R, G, and B values.
+    For any input image, applying the NOIR filter should result in an image 
+    where all pixels have equal R, G, and B values (grayscale).
     """
     
     @given(image=image_strategy())
     @settings(max_examples=100)
-    def test_bw_filter_equal_rgb_channels(self, image):
-        """All pixels in BW image should have equal R, G, B values."""
-        result = apply_bw(image)
+    def test_noir_filter_equal_rgb_channels(self, image):
+        """All pixels in NOIR image should have equal R, G, B values."""
+        result = apply_noir(image)
         
         # Check that all three channels are equal for every pixel
         assert np.array_equal(result[:, :, 0], result[:, :, 1])
@@ -57,36 +58,36 @@ class TestBWFilterCorrectness:
     
     @given(image=image_strategy())
     @settings(max_examples=100)
-    def test_bw_filter_preserves_dimensions(self, image):
-        """BW filter should preserve image dimensions."""
-        result = apply_bw(image)
+    def test_noir_filter_preserves_dimensions(self, image):
+        """NOIR filter should preserve image dimensions."""
+        result = apply_noir(image)
         assert result.shape == image.shape
     
     @given(image=image_strategy())
     @settings(max_examples=100)
-    def test_bw_via_apply_filter(self, image):
-        """apply_filter with BW type should produce same result as apply_bw."""
-        direct = apply_bw(image)
-        via_apply = apply_filter(image, FilterType.BW)
+    def test_noir_via_apply_filter(self, image):
+        """apply_filter with NOIR type should produce same result as apply_noir."""
+        direct = apply_noir(image)
+        via_apply = apply_filter(image, FilterType.NOIR)
         
         assert np.array_equal(direct, via_apply)
 
 
-class TestPolaroidFilterDimensions:
+class TestRetroFilterDimensions:
     """
-    **Feature: mascot-photobooth-v2, Property 7: Polaroid filter dimension increase**
+    **Feature: mascot-photobooth-v2, Property 7: Retro filter dimension increase**
     **Validates: Requirements 3.4**
     
-    For any input image with dimensions (H, W), applying the polaroid filter 
+    For any input image with dimensions (H, W), applying the RETRO filter 
     should result in an image with dimensions greater than (H, W).
     """
     
     @given(image=image_strategy(min_size=20, max_size=200))
     @settings(max_examples=100)
-    def test_polaroid_increases_dimensions(self, image):
-        """Polaroid filter should increase both height and width."""
+    def test_retro_increases_dimensions(self, image):
+        """RETRO filter should increase both height and width."""
         original_h, original_w = image.shape[:2]
-        result = apply_polaroid(image)
+        result = apply_retro(image)
         result_h, result_w = result.shape[:2]
         
         assert result_h > original_h, "Height should increase"
@@ -94,9 +95,9 @@ class TestPolaroidFilterDimensions:
     
     @given(image=image_strategy(min_size=20, max_size=200))
     @settings(max_examples=100)
-    def test_polaroid_has_white_border(self, image):
-        """Polaroid filter should add white border pixels."""
-        result = apply_polaroid(image)
+    def test_retro_has_white_border(self, image):
+        """RETRO filter should add white border pixels."""
+        result = apply_retro(image)
         
         # Check top-left corner is white (border area)
         border_size = int(image.shape[1] * 0.05)
@@ -106,10 +107,10 @@ class TestPolaroidFilterDimensions:
     
     @given(image=image_strategy(min_size=20, max_size=200))
     @settings(max_examples=100)
-    def test_polaroid_via_apply_filter(self, image):
-        """apply_filter with POLAROID type should produce same result as apply_polaroid."""
-        direct = apply_polaroid(image)
-        via_apply = apply_filter(image, FilterType.POLAROID)
+    def test_retro_via_apply_filter(self, image):
+        """apply_filter with RETRO type should produce same result as apply_retro."""
+        direct = apply_retro(image)
+        via_apply = apply_filter(image, FilterType.RETRO)
         
         assert np.array_equal(direct, via_apply)
 
@@ -117,7 +118,7 @@ class TestPolaroidFilterDimensions:
 class TestNoFilterIdentity:
     """
     **Feature: mascot-photobooth-v2, Property 8: No-filter identity**
-    **Validates: Requirements 3.5**
+    **Validates: Requirements 3.6**
     
     For any input image, when no filter is selected, 
     the output image should be byte-identical to the input.
@@ -151,18 +152,25 @@ class TestFilterTypeConversion:
         assert get_filter_from_string("none") == FilterType.NONE
         assert get_filter_from_string("NONE") == FilterType.NONE
     
-    def test_get_filter_from_string_cartoon(self):
-        assert get_filter_from_string("cartoon") == FilterType.CARTOON
-        assert get_filter_from_string("CARTOON") == FilterType.CARTOON
+    def test_get_filter_from_string_glitch(self):
+        assert get_filter_from_string("glitch") == FilterType.GLITCH
+        assert get_filter_from_string("GLITCH") == FilterType.GLITCH
     
-    def test_get_filter_from_string_vintage(self):
-        assert get_filter_from_string("vintage") == FilterType.VINTAGE
+    def test_get_filter_from_string_neon(self):
+        assert get_filter_from_string("neon") == FilterType.NEON
+        assert get_filter_from_string("CYBERPUNK") == FilterType.NEON  # Alias
     
-    def test_get_filter_from_string_bw(self):
-        assert get_filter_from_string("bw") == FilterType.BW
+    def test_get_filter_from_string_dreamy(self):
+        assert get_filter_from_string("dreamy") == FilterType.DREAMY
+        assert get_filter_from_string("PASTEL") == FilterType.DREAMY  # Alias
     
-    def test_get_filter_from_string_polaroid(self):
-        assert get_filter_from_string("polaroid") == FilterType.POLAROID
+    def test_get_filter_from_string_retro(self):
+        assert get_filter_from_string("retro") == FilterType.RETRO
+        assert get_filter_from_string("POLAROID") == FilterType.RETRO  # Alias
+    
+    def test_get_filter_from_string_noir(self):
+        assert get_filter_from_string("noir") == FilterType.NOIR
+        assert get_filter_from_string("BW") == FilterType.NOIR  # Alias
     
     def test_get_filter_from_string_unknown(self):
         """Unknown filter names should default to NONE."""
@@ -170,42 +178,63 @@ class TestFilterTypeConversion:
         assert get_filter_from_string("") == FilterType.NONE
 
 
-class TestCartoonFilter:
-    """Tests for cartoon filter."""
+class TestGlitchFilter:
+    """Tests for glitch filter."""
     
     @given(image=image_strategy(min_size=20, max_size=100))
     @settings(max_examples=50)
-    def test_cartoon_preserves_dimensions(self, image):
-        """Cartoon filter should preserve image dimensions."""
-        result = apply_cartoon(image)
+    def test_glitch_preserves_dimensions(self, image):
+        """Glitch filter should preserve image dimensions."""
+        result = apply_glitch(image)
         assert result.shape == image.shape
     
     @given(image=image_strategy(min_size=20, max_size=100))
     @settings(max_examples=50)
-    def test_cartoon_returns_valid_image(self, image):
-        """Cartoon filter should return valid BGR image."""
-        result = apply_cartoon(image)
+    def test_glitch_returns_valid_image(self, image):
+        """Glitch filter should return valid BGR image."""
+        result = apply_glitch(image)
         
         assert result.dtype == np.uint8
         assert len(result.shape) == 3
         assert result.shape[2] == 3
 
 
-class TestVintageFilter:
-    """Tests for vintage filter."""
+class TestNeonFilter:
+    """Tests for neon filter."""
     
     @given(image=image_strategy(min_size=20, max_size=100))
     @settings(max_examples=50)
-    def test_vintage_preserves_dimensions(self, image):
-        """Vintage filter should preserve image dimensions."""
-        result = apply_vintage(image)
+    def test_neon_preserves_dimensions(self, image):
+        """Neon filter should preserve image dimensions."""
+        result = apply_neon(image)
         assert result.shape == image.shape
     
     @given(image=image_strategy(min_size=20, max_size=100))
     @settings(max_examples=50)
-    def test_vintage_returns_valid_image(self, image):
-        """Vintage filter should return valid BGR image."""
-        result = apply_vintage(image)
+    def test_neon_returns_valid_image(self, image):
+        """Neon filter should return valid BGR image."""
+        result = apply_neon(image)
+        
+        assert result.dtype == np.uint8
+        assert len(result.shape) == 3
+        assert result.shape[2] == 3
+
+
+class TestDreamyFilter:
+    """Tests for dreamy filter."""
+    
+    @given(image=image_strategy(min_size=20, max_size=100))
+    @settings(max_examples=50)
+    def test_dreamy_preserves_dimensions(self, image):
+        """Dreamy filter should preserve image dimensions."""
+        result = apply_dreamy(image)
+        assert result.shape == image.shape
+    
+    @given(image=image_strategy(min_size=20, max_size=100))
+    @settings(max_examples=50)
+    def test_dreamy_returns_valid_image(self, image):
+        """Dreamy filter should return valid BGR image."""
+        result = apply_dreamy(image)
         
         assert result.dtype == np.uint8
         assert len(result.shape) == 3

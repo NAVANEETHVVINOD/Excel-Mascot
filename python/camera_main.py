@@ -120,14 +120,14 @@ def main():
                     elif animation == AnimationType.WELCOME:
                         current_command = "WELCOME"
         
-        # Gesture detection (MediaPipe) - takes priority for photo trigger
+        # Gesture detection (MediaPipe) - ONLY thumbs up triggers photo
         if gesture_name:
             if gesture_name == "THUMBS_UP":
                 current_command = "PHOTO_TRIGGER"
             elif gesture_name == "LOVE" and current_command == "NORMAL":
-                current_command = "LOVE"
+                current_command = "LOVE"  # Animation only, no photo
             elif gesture_name == "SUS" and current_command == "NORMAL":
-                current_command = "SUS"
+                current_command = "SUS"   # Animation only, no photo
         
         # Handle Photo Capture
         if current_command == "PHOTO_TRIGGER":
@@ -146,28 +146,28 @@ def main():
                 # Trigger LED immediately for all modes (visual feedback of trigger)
                 arduino.send_command("PHOTO")
                 
-                # Countdown ONLY for BURST (User Request)
+                # Countdown ONLY for BURST (4 seconds as per requirement)
                 if mode == "BURST":
-                    time.sleep(0.5) # Wait for LED flash to settle? 
-                    capture_manager.show_countdown(cap, seconds=3)
+                    time.sleep(0.5) # Wait for LED flash to settle
+                    capture_manager.show_countdown(cap, seconds=4)
                 else:
                     time.sleep(0.5) # Short delay for others
                 
-                # 3. Capture based on Mode
+                # 3. Capture based on Mode (Cloud-only: don't save to disk)
                 result = None
                 
                 if mode == "BURST":
-                    result = capture_manager.capture_burst(cap, filter_type=filter_type, save_to_disk=True)
+                    result = capture_manager.capture_burst(cap, filter_type=filter_type, save_to_disk=False)
                 elif mode == "GIF":
-                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=True)
+                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=False)
                 else: # SINGLE
                     # Read fresh frame for high quality single shot
                     ret, fresh_frame = cap.read()
                     if ret:
-                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=True)
+                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=False)
                 
                 if result:
-                    print(f"✅ Capture complete! Saved to {PHOTO_DIR}")
+                    print(f"✅ Capture complete! (Cloud-only mode)")
                     
                     # Flash Effect
                     flash = np.ones_like(frame) * 255
@@ -236,23 +236,59 @@ def main():
         if roboflow and roboflow_detections:
             display_frame = roboflow.draw_detections(display_frame, roboflow_detections)
         
-        # Show specific filter status text small in corner
-        cv2.putText(display_frame, f"Filter: {web_gallery.current_filter}", (10, 470), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+        # Draw control overlay
+        overlay_height = 60
+        cv2.rectangle(display_frame, (0, 0), (display_frame.shape[1], overlay_height), (0, 0, 0), -1)
+        cv2.rectangle(display_frame, (0, 0), (display_frame.shape[1], overlay_height), (50, 50, 50), 1)
+        
+        # Show current mode and filter
+        mode_text = f"MODE: {web_gallery.current_mode}"
+        filter_text = f"FILTER: {web_gallery.current_filter}"
+        
+        cv2.putText(display_frame, mode_text, (15, 25), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)  # Gold color
+        cv2.putText(display_frame, filter_text, (15, 50), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
+        
+        # Show controls hint
+        controls_text = "Q:Quit | ESC:Fullscreen | M:Minimize"
+        cv2.putText(display_frame, controls_text, (display_frame.shape[1] - 350, 25), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
         
         # Show Roboflow status
         if roboflow and roboflow.is_available():
             status = f"AI: {len(roboflow_detections)} detections"
-            cv2.putText(display_frame, status, (10, 30), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    
-        # Show URL in corner?
-        # cv2.putText(display_frame, "Scan for Photos!", (450, 470), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.putText(display_frame, status, (display_frame.shape[1] - 200, 50), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        
+        # Show gesture hint at bottom
+        cv2.putText(display_frame, "Show THUMBS UP to capture!", 
+                    (display_frame.shape[1]//2 - 150, display_frame.shape[0] - 20), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
         cv2.imshow("Mascot View", display_frame)
         
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Handle key events
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q') or key == ord('Q'):
+            print("👋 Closing application...")
             break
+        elif key == 27:  # ESC key - toggle fullscreen
+            # Toggle between fullscreen and windowed
+            current_prop = cv2.getWindowProperty("Mascot View", cv2.WND_PROP_FULLSCREEN)
+            if current_prop == cv2.WINDOW_FULLSCREEN:
+                cv2.setWindowProperty("Mascot View", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+                print("📺 Windowed mode")
+            else:
+                cv2.setWindowProperty("Mascot View", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                print("📺 Fullscreen mode")
+        elif key == ord('m') or key == ord('M'):
+            # Minimize window (Windows specific)
+            import ctypes
+            hwnd = ctypes.windll.user32.FindWindowW(None, "Mascot View")
+            if hwnd:
+                ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
+                print("📺 Window minimized")
 
     cap.release()
     cv2.destroyAllWindows()

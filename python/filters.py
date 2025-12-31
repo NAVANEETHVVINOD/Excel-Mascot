@@ -2,6 +2,7 @@
 Image Filters Module
 
 Provides various photo filters for the Mascot Photo Booth.
+Filters: GLITCH, NEON, DREAMY, RETRO, NOIR
 """
 
 import cv2
@@ -13,202 +14,128 @@ from typing import Optional
 class FilterType(Enum):
     """Available filter types."""
     NONE = "none"
-    CARTOON = "cartoon"
-    VINTAGE = "vintage"
-    BW = "bw"
-    POLAROID = "polaroid"
-    GLITCH = "glitch"
-    CYBERPUNK = "cyberpunk"
-    PASTEL = "pastel"
+    GLITCH = "glitch"      # RGB channel shifting, scan lines
+    NEON = "neon"          # High contrast, neon color enhancement (cyberpunk)
+    DREAMY = "dreamy"      # Soft blur, pastel tones
+    RETRO = "retro"        # Polaroid border with timestamp
+    NOIR = "noir"          # High contrast black and white
 
 
-def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "Mascot 2025") -> np.ndarray:
-    """
-    Apply the specified filter to an image.
-    """
-    if filter_type == FilterType.NONE:
-        return image.copy()
-    elif filter_type == FilterType.CARTOON:
-        return apply_cartoon(image)
-    elif filter_type == FilterType.VINTAGE:
-        return apply_vintage(image)
-    elif filter_type == FilterType.BW:
-        return apply_bw(image)
-    elif filter_type == FilterType.POLAROID:
-        return apply_polaroid(image, text)
-    elif filter_type == FilterType.GLITCH:
-        return apply_glitch(image)
-    elif filter_type == FilterType.CYBERPUNK:
-        return apply_cyberpunk(image)
-    elif filter_type == FilterType.PASTEL:
-        return apply_pastel(image)
-    else:
-        return image.copy()
-
-# ... (Existing implementations: apply_cartoon, apply_vintage, apply_bw, apply_polaroid) ...
-
-def apply_glitch(image: np.ndarray) -> np.ndarray:
-    """Simulate RGB shift glitch."""
-    shift = 15
-    rows, cols, _ = image.shape
-    
-    b, g, r = cv2.split(image)
-    
-    # Shift Blue left
-    b_shifted = np.roll(b, -shift, axis=1)
-    # b_shifted[:, -shift:] = 0 # Optional black bar
-    
-    # Shift Red right
-    r_shifted = np.roll(r, shift, axis=1)
-    # r_shifted[:, :shift] = 0
-    
-    return cv2.merge([b_shifted, g, r_shifted])
-
-def apply_cyberpunk(image: np.ndarray) -> np.ndarray:
-    """High contrast, cool tint."""
-    # Simple color grading: boost blue/red
-    b, g, r = cv2.split(image)
-    b = cv2.convertScaleAbs(b, alpha=1.1, beta=10) # More Blue
-    g = cv2.convertScaleAbs(g, alpha=0.9, beta=0) 
-    r = cv2.convertScaleAbs(r, alpha=1.2, beta=10) # More Red -> Purple
-    
-    merged = cv2.merge([b, g, r])
-    # Increase contrast
-    return cv2.convertScaleAbs(merged, alpha=1.2, beta=10)
-
-def apply_pastel(image: np.ndarray) -> np.ndarray:
-    """Soft, bright, low saturation."""
-    # Increase brightness
-    bright = cv2.convertScaleAbs(image, alpha=1.1, beta=40)
-    
-    # Reduce saturation
-    hsv = cv2.cvtColor(bright, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-    s = cv2.multiply(s, 0.6).astype(np.uint8)
-    
-    final_hsv = cv2.merge([h, s, v])
-    return cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
-
-
-def get_filter_from_string(filter_name: str) -> FilterType:
-    """
-    Convert string filter name to FilterType enum.
-    """
-    name_upper = filter_name.upper()
-    
-    mapping = {
-        "NONE": FilterType.NONE,
-        "CARTOON": FilterType.CARTOON,
-        "VINTAGE": FilterType.VINTAGE,
-        "BW": FilterType.BW,
-        "POLAROID": FilterType.POLAROID,
-        "GLITCH": FilterType.GLITCH,
-        "CYBERPUNK": FilterType.CYBERPUNK,
-        "PASTEL": FilterType.PASTEL,
-    }
-    
-    return mapping.get(name_upper, FilterType.NONE)
-
-
-def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "Mascot 2025") -> np.ndarray:
+def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "EXCEL 2025") -> np.ndarray:
     """
     Apply the specified filter to an image.
     
     Args:
         image: BGR image as numpy array
         filter_type: Type of filter to apply
-        text: Text for polaroid filter
+        text: Text for retro/polaroid filter
         
     Returns:
         Filtered image as numpy array
     """
     if filter_type == FilterType.NONE:
         return image.copy()
-    elif filter_type == FilterType.CARTOON:
-        return apply_cartoon(image)
-    elif filter_type == FilterType.VINTAGE:
-        return apply_vintage(image)
-    elif filter_type == FilterType.BW:
-        return apply_bw(image)
-    elif filter_type == FilterType.POLAROID:
-        return apply_polaroid(image, text)
+    elif filter_type == FilterType.GLITCH:
+        return apply_glitch(image)
+    elif filter_type == FilterType.NEON:
+        return apply_neon(image)
+    elif filter_type == FilterType.DREAMY:
+        return apply_dreamy(image)
+    elif filter_type == FilterType.RETRO:
+        return apply_retro(image, text)
+    elif filter_type == FilterType.NOIR:
+        return apply_noir(image)
     else:
         return image.copy()
 
 
-def apply_cartoon(image: np.ndarray) -> np.ndarray:
+def apply_glitch(image: np.ndarray) -> np.ndarray:
     """
-    Apply cartoon effect using edge detection and color quantization.
+    Apply RGB shift glitch effect with scan lines.
     
     Args:
         image: BGR image as numpy array
         
     Returns:
-        Cartoonized image
+        Glitched image
     """
-    # Edge detection
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray = cv2.medianBlur(gray, 5)
-    edges = cv2.adaptiveThreshold(
-        gray, 255, 
-        cv2.ADAPTIVE_THRESH_MEAN_C, 
-        cv2.THRESH_BINARY, 9, 9
-    )
+    shift = 15
+    rows, cols = image.shape[:2]
     
-    # Color smoothing
-    color = cv2.bilateralFilter(image, 9, 75, 75)
+    b, g, r = cv2.split(image)
     
-    # Combine edges with color
-    cartoon = cv2.bitwise_and(color, color, mask=edges)
-    return cartoon
+    # Shift Blue left
+    b_shifted = np.roll(b, -shift, axis=1)
+    
+    # Shift Red right
+    r_shifted = np.roll(r, shift, axis=1)
+    
+    glitched = cv2.merge([b_shifted, g, r_shifted])
+    
+    # Add scan lines
+    for i in range(0, rows, 4):
+        glitched[i:i+2, :] = (glitched[i:i+2, :] * 0.7).astype(np.uint8)
+    
+    return glitched
 
 
-def apply_vintage(image: np.ndarray) -> np.ndarray:
+def apply_neon(image: np.ndarray) -> np.ndarray:
     """
-    Apply vintage/sepia effect with noise grain.
+    Apply neon/cyberpunk effect with high contrast and color boost.
     
     Args:
         image: BGR image as numpy array
         
     Returns:
-        Vintage-styled image
+        Neon-styled image
     """
-    # Sepia transformation matrix
-    kernel = np.array([
-        [0.272, 0.534, 0.131],
-        [0.349, 0.686, 0.168],
-        [0.393, 0.769, 0.189]
-    ])
+    b, g, r = cv2.split(image)
     
-    sepia = cv2.transform(image, kernel)
-    sepia = np.clip(sepia, 0, 255).astype(np.uint8)
+    # Boost blue and red for neon look
+    b = cv2.convertScaleAbs(b, alpha=1.2, beta=15)
+    g = cv2.convertScaleAbs(g, alpha=0.85, beta=0)
+    r = cv2.convertScaleAbs(r, alpha=1.3, beta=20)
     
-    # Add film grain noise
-    noise = np.random.normal(0, 15, sepia.shape).astype(np.int16)
-    vintage = np.clip(sepia.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+    merged = cv2.merge([b, g, r])
     
-    return vintage
+    # Increase overall contrast
+    neon = cv2.convertScaleAbs(merged, alpha=1.3, beta=15)
+    
+    return neon
 
 
-def apply_bw(image: np.ndarray) -> np.ndarray:
+def apply_dreamy(image: np.ndarray) -> np.ndarray:
     """
-    Convert image to black and white (grayscale).
+    Apply soft, dreamy pastel effect.
     
     Args:
         image: BGR image as numpy array
         
     Returns:
-        Grayscale image in BGR format (all channels equal)
+        Dreamy pastel image
     """
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # Convert back to BGR so all channels are equal
-    bw = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-    return bw
+    # Increase brightness
+    bright = cv2.convertScaleAbs(image, alpha=1.1, beta=50)
+    
+    # Apply soft blur
+    blurred = cv2.GaussianBlur(bright, (15, 15), 0)
+    
+    # Blend original with blur for soft glow
+    dreamy = cv2.addWeighted(bright, 0.6, blurred, 0.4, 0)
+    
+    # Reduce saturation for pastel look
+    hsv = cv2.cvtColor(dreamy, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    s = (s * 0.6).astype(np.uint8)
+    v = np.clip(v.astype(np.int16) + 20, 0, 255).astype(np.uint8)
+    
+    final_hsv = cv2.merge([h, s, v])
+    return cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
 
 
-def apply_polaroid(image: np.ndarray, text: str = "Mascot 2025") -> np.ndarray:
+def apply_retro(image: np.ndarray, text: str = "EXCEL 2025") -> np.ndarray:
     """
-    Apply polaroid frame effect with white border and text.
+    Apply retro polaroid frame effect with white border and text.
     
     Args:
         image: BGR image as numpy array
@@ -253,47 +180,33 @@ def apply_polaroid(image: np.ndarray, text: str = "Mascot 2025") -> np.ndarray:
     return polaroid
 
 
-def apply_glitch(image: np.ndarray) -> np.ndarray:
-    """Simulate RGB shift glitch."""
-    shift = 15
-    rows, cols, _ = image.shape
+def apply_noir(image: np.ndarray) -> np.ndarray:
+    """
+    Apply high contrast black and white (noir) effect.
     
-    b, g, r = cv2.split(image)
+    Args:
+        image: BGR image as numpy array
+        
+    Returns:
+        High contrast grayscale image in BGR format
+    """
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
-    # Shift Blue left
-    b_shifted = np.roll(b, -shift, axis=1)
-    # b_shifted[:, -shift:] = 0 # Optional black bar
-    
-    # Shift Red right
-    r_shifted = np.roll(r, shift, axis=1)
-    # r_shifted[:, :shift] = 0
-    
-    return cv2.merge([b_shifted, g, r_shifted])
-
-def apply_cyberpunk(image: np.ndarray) -> np.ndarray:
-    """High contrast, cool tint."""
-    # Simple color grading: boost blue/red
-    b, g, r = cv2.split(image)
-    b = cv2.convertScaleAbs(b, alpha=1.1, beta=10) # More Blue
-    g = cv2.convertScaleAbs(g, alpha=0.9, beta=0) 
-    r = cv2.convertScaleAbs(r, alpha=1.2, beta=10) # More Red -> Purple
-    
-    merged = cv2.merge([b, g, r])
     # Increase contrast
-    return cv2.convertScaleAbs(merged, alpha=1.2, beta=10)
-
-def apply_pastel(image: np.ndarray) -> np.ndarray:
-    """Soft, bright, low saturation."""
-    # Increase brightness
-    bright = cv2.convertScaleAbs(image, alpha=1.1, beta=40)
+    gray = cv2.convertScaleAbs(gray, alpha=1.3, beta=10)
     
-    # Reduce saturation
-    hsv = cv2.cvtColor(bright, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-    s = cv2.multiply(s, 0.6).astype(np.uint8)
+    # Apply slight vignette effect
+    rows, cols = gray.shape
+    X = cv2.getGaussianKernel(cols, cols * 0.5)
+    Y = cv2.getGaussianKernel(rows, rows * 0.5)
+    kernel = Y * X.T
+    mask = kernel / kernel.max()
+    gray = (gray * mask).astype(np.uint8)
     
-    final_hsv = cv2.merge([h, s, v])
-    return cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    # Convert back to BGR so all channels are equal
+    noir = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    return noir
 
 
 def get_filter_from_string(filter_name: str) -> FilterType:
@@ -306,14 +219,22 @@ def get_filter_from_string(filter_name: str) -> FilterType:
     Returns:
         Corresponding FilterType enum value
     """
+    if not filter_name:
+        return FilterType.NONE
+        
     name_upper = filter_name.upper()
     
     mapping = {
         "NONE": FilterType.NONE,
-        "CARTOON": FilterType.CARTOON,
-        "VINTAGE": FilterType.VINTAGE,
-        "BW": FilterType.BW,
-        "POLAROID": FilterType.POLAROID,
+        "GLITCH": FilterType.GLITCH,
+        "NEON": FilterType.NEON,
+        "CYBERPUNK": FilterType.NEON,  # Alias
+        "DREAMY": FilterType.DREAMY,
+        "PASTEL": FilterType.DREAMY,   # Alias
+        "RETRO": FilterType.RETRO,
+        "POLAROID": FilterType.RETRO,  # Alias
+        "NOIR": FilterType.NOIR,
+        "BW": FilterType.NOIR,         # Alias
     }
     
     return mapping.get(name_upper, FilterType.NONE)
