@@ -31,6 +31,10 @@ ROBOFLOW_ENABLED = bool(ROBOFLOW_API_KEY and ROBOFLOW_MODEL_ID)
 
 
 def main():
+    # Fix for Windows Unicode printing
+    if sys.platform.startswith('win'):
+        sys.stdout.reconfigure(encoding='utf-8')
+
     print("🚀 Starting Mascot Photo Booth System...")
     
     # 1. Start Web Gallery & Remote Control
@@ -63,6 +67,9 @@ def main():
         print("ℹ️ Roboflow AI detection disabled (set ROBOFLOW_API_KEY and ROBOFLOW_MODEL_ID to enable)")
 
     # 5. Start Camera
+    cv2.namedWindow("Mascot View", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("Mascot View", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    
     cap = cv2.VideoCapture(1) # Try Ext first
     if not cap.isOpened():
         cap = cv2.VideoCapture(0)
@@ -150,17 +157,17 @@ def main():
                 result = None
                 
                 if mode == "BURST":
-                    result = capture_manager.capture_burst(cap, filter_type=filter_type, save_to_disk=False)
+                    result = capture_manager.capture_burst(cap, filter_type=filter_type, save_to_disk=True)
                 elif mode == "GIF":
-                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=False)
+                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=True)
                 else: # SINGLE
                     # Read fresh frame for high quality single shot
                     ret, fresh_frame = cap.read()
                     if ret:
-                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=False)
+                        result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=True)
                 
                 if result:
-                    print("✅ Capture complete! (Memory Mode)")
+                    print(f"✅ Capture complete! Saved to {PHOTO_DIR}")
                     
                     # Flash Effect
                     flash = np.ones_like(frame) * 255
@@ -231,7 +238,7 @@ def main():
         
         # Show specific filter status text small in corner
         cv2.putText(display_frame, f"Filter: {web_gallery.current_filter}", (10, 470), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
         
         # Show Roboflow status
         if roboflow and roboflow.is_available():

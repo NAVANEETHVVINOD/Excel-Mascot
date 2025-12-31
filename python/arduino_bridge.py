@@ -3,7 +3,7 @@ import time
 import threading
 
 class ArduinoBridge:
-    def __init__(self, port="COM3", baud_rate=9600):
+    def __init__(self, port="COM4", baud_rate=9600):
         self.port = port
         self.baud_rate = baud_rate
         self.serial_conn = None

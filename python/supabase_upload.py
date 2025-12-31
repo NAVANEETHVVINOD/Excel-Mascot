@@ -94,11 +94,26 @@ def upload_bytes(file_bytes, filename, metadata=None):
             return public_url
 
         except Exception as e:
-            print(f"⚠️ Bytes Upload Failed: {e}")
+            print(f"⚠️ Bytes Upload Failed (Attempt {attempt}): {e}")
             time.sleep(1)
 
-    print("❌ Upload failed. Data lost (Memory-only mode).")
-    return None
+    print("❌ Upload failed. Saving to offline queue.")
+    
+    # Save bytes to local file for syncing
+    try:
+        if not os.path.exists("offline_cache"):
+            os.makedirs("offline_cache")
+            
+        local_filename = f"offline_cache/{filename}"
+        with open(local_filename, "wb") as f:
+            f.write(file_bytes)
+            
+        sync_queue.add(local_filename, metadata)
+        print(f"✅ Saved to offline queue: {local_filename}")
+        return None
+    except Exception as save_err:
+        print(f"❌ CRITICAL: Could not check save offline: {save_err}")
+        return None
 
 def process_queue():
     """Process pending items in the offline queue."""

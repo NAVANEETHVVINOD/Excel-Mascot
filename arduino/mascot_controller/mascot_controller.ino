@@ -41,7 +41,7 @@ bool isInner(int idx) {
 
 // Stepper Configuration
 const int stepsPerWave = 100; // Adjust based on desired angle (assuming 200 steps/rev)
-const int stepDelay = 1000;   // Microseconds between steps (Speed)
+const int stepDelay = 3000;   // Microseconds between steps (Speed)
 
 void waveStepper() {
   // Enable the driver
@@ -142,17 +142,23 @@ void loop() {
 
   if (duration == 0) distance = 999;
   else distance = (duration * 0.0343) / 2.0;
+  
+  // DEBUG PRINT
+  Serial.print("Dist: "); Serial.println(distance);
 
-  if (distance > 0 && distance < 20) {
+  // Increased threshold to 150cm based on user logs
+  if (distance > 0 && distance < 150) {
+    Serial.println(">>> OBJECT DETECTED! WAVING! <<<"); // Debug Print
     emotionLove();
     lastIdleTime = millis();
     
-    // Quick Servo Wave (Keep servo logic here or remove? User only mentioned stepper continuous. I'll leave servo on trigger for now or maybe just remove wave triggers from here entirely if they want continuous wave)
-    // Actually, "it should continusly wave for now" might imply the Whole waving mechanism.
-    // But I will just put the stepper wave in the main loop.
-    
+    // Quick Servo Wave
     if(!myServo.attached()) myServo.attach(11);
-    myServo.write(110); delay(100); myServo.write(30);
+    myServo.write(110); 
+    
+    waveStepper(); // Trigger Stepper Wave on proximity
+    
+    myServo.write(30);
     delay(100);
     myServo.detach(); 
   }
@@ -174,9 +180,6 @@ void loop() {
        emotionNormal();
     }
   }
-  
-  // CONTINUOUS WAVE
-  waveStepper();
   
   delay(50); 
 }
