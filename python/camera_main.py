@@ -10,7 +10,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from gestures import GestureRecognizer
 from arduino_bridge import ArduinoBridge
 import web_gallery
-from supabase_upload import upload_photo
+from supabase_upload import upload_photo, upload_bytes
+import threading
 from roboflow_detector import RoboflowDetector, AnimationType
 from capture_modes import CaptureManager
 from filters import get_filter_from_string
@@ -189,9 +190,17 @@ def main():
                                 filename = f"mascot_photo_{base_ts}.jpg"
                         
                         if file_bytes:
-                            print(f"🚀 Uploading {len(file_bytes)} bytes to Supabase...")
-                            import supabase_upload
-                            supabase_upload.upload_bytes(file_bytes, filename)
+                            print(f"🚀 Queueing background upload ({len(file_bytes)} bytes)...")
+                            # Async Upload
+                            def background_upload(bytes_data, fname):
+                                try:
+                                    import supabase_upload
+                                    # Create a fresh loop or client if needed, but requests/httpx is thread safe enough for this
+                                    supabase_upload.upload_bytes(bytes_data, fname)
+                                except Exception as err:
+                                    print(f"❌ Background Upload Error: {err}")
+                            
+                            threading.Thread(target=background_upload, args=(file_bytes, filename), daemon=True).start()
                         else:
                             print("❌ Error: No image data to upload.")
                             

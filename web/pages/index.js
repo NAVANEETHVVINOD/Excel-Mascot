@@ -5,6 +5,7 @@ import Head from "next/head";
 export default function Gallery() {
     const [photos, setPhotos] = useState([]);
     const [commandChannel, setCommandChannel] = useState(null);
+    const [activeMode, setActiveMode] = useState('SINGLE'); // Default mode state for UI feedback
 
     // Initial Load & Realtime
     useEffect(() => {
@@ -48,91 +49,117 @@ export default function Gallery() {
         }
     };
 
+    const setMode = (mode) => {
+        setActiveMode(mode);
+        sendCommand('SET_MODE', { mode });
+    };
+
     return (
         <div className="container">
             <Head>
                 <title>Mascot Memories</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Rock+Salt&display=swap" rel="stylesheet" />
+                <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
             </Head>
 
-            <div className="noise-overlay"></div>
+            <div className="grid-overlay"></div>
+            <div className="scanline"></div>
 
             <header>
-                <div className="badge">Excel 2025</div>
+                <div className="badge">EXCEL 2025</div>
                 <h1>MASCOT BOOTH</h1>
+                <div className="status-line">SYSTEM STATUS: <span className="blink">ONLINE</span></div>
             </header>
 
             <section className="controls-section">
-                <div className="tape-label">REMOTE CONTROL</div>
+                <div className="panel-header">/// FILTERS_MODULE</div>
                 <div className="control-group">
-                    <button className="retro-btn glitch" onClick={() => sendCommand('SET_FILTER', { filter: 'GLITCH' })}>GLITCH</button>
-                    <button className="retro-btn cyber" onClick={() => sendCommand('SET_FILTER', { filter: 'CYBERPUNK' })}>NEON</button>
-                    <button className="retro-btn pastel" onClick={() => sendCommand('SET_FILTER', { filter: 'PASTEL' })}>DREAMY</button>
-                    <button className="retro-btn polaroid" onClick={() => sendCommand('SET_FILTER', { filter: 'POLAROID' })}>CLASSIC</button>
-                    <button className="retro-btn bw" onClick={() => sendCommand('SET_FILTER', { filter: 'BW' })}>NOIR</button>
-                    <button className="retro-btn reset" onClick={() => sendCommand('SET_FILTER', { filter: 'NONE' })}>RESET</button>
+                    <button className="tech-btn glitch-effect" onClick={() => sendCommand('SET_FILTER', { filter: 'GLITCH' })}>GLITCH</button>
+                    <button className="tech-btn neon-effect" onClick={() => sendCommand('SET_FILTER', { filter: 'CYBERPUNK' })}>NEON</button>
+                    <button className="tech-btn dreamy-effect" onClick={() => sendCommand('SET_FILTER', { filter: 'PASTEL' })}>DREAMY</button>
+                    <button className="tech-btn retro-effect" onClick={() => sendCommand('SET_FILTER', { filter: 'POLAROID' })}>RETRO</button>
+                    <button className="tech-btn bw-effect" onClick={() => sendCommand('SET_FILTER', { filter: 'BW' })}>NOIR</button>
+                    <button className="tech-btn reset-effect" onClick={() => sendCommand('SET_FILTER', { filter: 'NONE' })}>RESET</button>
                 </div>
+
+                <div className="panel-spacer"></div>
+
+                <div className="panel-header">/// CAPTURE_MODE</div>
                 <div className="control-group small-gap">
-                    <button className={`sm-btn ${activeMode === 'BURST' ? 'active' : ''}`} onClick={() => setMode('BURST')}>BURST</button>
-                    <button className={`sm-btn ${activeMode === 'GIF' ? 'active' : ''}`} onClick={() => setMode('GIF')}>GIF</button>
-                    <button className={`sm-btn ${activeMode === 'SINGLE' ? 'active' : ''}`} onClick={() => setMode('SINGLE')}>1 SHOT</button>
+                    <button className={`mode-btn ${activeMode === 'BURST' ? 'active' : ''}`} onClick={() => setMode('BURST')}>[ BURST ]</button>
+                    <button className={`mode-btn ${activeMode === 'GIF' ? 'active' : ''}`} onClick={() => setMode('GIF')}>[ GIF ]</button>
+                    <button className={`mode-btn ${activeMode === 'SINGLE' ? 'active' : ''}`} onClick={() => setMode('SINGLE')}>[ SINGLE ]</button>
                 </div>
             </section>
 
             <main className="gallery">
                 {photos.map((p, index) => (
-                    <div key={p.id} className={`polaroid-card delay-${index % 5}`}>
-                        <div className="tape"></div>
+                    <div key={p.id} className="tech-card">
+                        <div className="card-header">
+                            <span>IMG_{p.id}</span>
+                            <span>{new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
                         <div className="image-frame">
                             <img src={p.image_url} alt="Memory" loading="lazy" />
                         </div>
-                        <div className="handwritten">Mascot '25</div>
-                        <div className="card-actions">
+                        <div className="card-footer">
                             <a href={p.image_url} download target="_blank" className="download-btn-card">
-                                DOWNLOAD
+                                &darr; DOWNLOAD
                             </a>
                         </div>
+                        <div className="corner-decor top-left"></div>
+                        <div className="corner-decor top-right"></div>
+                        <div className="corner-decor bottom-left"></div>
+                        <div className="corner-decor bottom-right"></div>
                     </div>
                 ))}
             </main>
 
             <footer>
-                <p>Made with ❤️ for Excel 2025</p>
+                <p>EXCEL TECHFEST 2025 // MASCOT_SYSTEM_V2.0</p>
             </footer>
 
             <style jsx global>{`
                 :root {
-                    --bg: #5c4033;
-                    --paper: #f4f1ea;
-                    --tape: rgba(255, 255, 255, 0.4);
-                    --accent: #d32f2f;
-                    --yellow: #ffeb3b; 
+                    --bg: #050505;
+                    --grid: #1a1a1a;
+                    --primary: #FFD700; /* Gold */
+                    --secondary: #FF8C00; /* Orange */
+                    --accent: #00f3ff; /* Cyan */
+                    --text: #e0e0e0;
+                    --surface: #0a0a0a;
+                    --border: #333;
                 }
 
                 * { box-sizing: border-box; }
 
                 body {
                     margin: 0;
-                    background-color: #5c4033;
-                    background-image: 
-                        repeating-linear-gradient(45deg, #6b4c3e 25%, transparent 25%, transparent 75%, #6b4c3e 75%, #6b4c3e), 
-                        repeating-linear-gradient(45deg, #6b4c3e 25%, #5c4033 25%, #5c4033 75%, #6b4c3e 75%, #6b4c3e);
-                    background-size: 20px 20px;
-                    background-position: 0 0, 10px 10px;
-                    color: white;
-                    font-family: 'Permanent Marker', cursive;
+                    background-color: var(--bg);
+                    color: var(--text);
+                    font-family: 'Share Tech Mono', monospace;
                     min-height: 100vh;
                     overflow-x: hidden;
                 }
 
-                /* Noise Texture - Keep subtle */
-                .noise-overlay {
+                /* Background Effects */
+                .grid-overlay {
                     position: fixed; top:0; left:0; width:100%; height:100%;
-                    background: url('https://grainy-gradients.vercel.app/noise.svg');
-                    opacity: 0.03;
+                    background-image: 
+                        linear-gradient(var(--grid) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+                    background-size: 30px 30px;
+                    opacity: 0.2;
+                    z-index: -1;
                     pointer-events: none;
-                    z-index: 999;
+                }
+                
+                .scanline {
+                    position: fixed; top:0; left:0; width:100%; height:4px;
+                    background: rgba(0, 243, 255, 0.1);
+                    animation: scan 6s linear infinite;
+                    pointer-events: none;
+                    z-index: 1000;
                 }
 
                 .container {
@@ -141,217 +168,157 @@ export default function Gallery() {
                     padding: 20px;
                 }
 
+                /* Header */
                 header {
                     text-align: center;
                     margin-bottom: 40px;
+                    border-bottom: 2px solid var(--border);
+                    padding-bottom: 20px;
                     position: relative;
                 }
 
                 .badge {
                     display: inline-block;
-                    background: var(--accent);
-                    padding: 5px 15px;
-                    transform: rotate(-3deg);
-                    font-size: 1.2rem;
-                    box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+                    color: var(--primary);
+                    border: 1px solid var(--primary);
+                    padding: 2px 10px;
+                    font-size: 0.8rem;
+                    letter-spacing: 2px;
                     margin-bottom: 10px;
-                    color: white;
-                    border: 2px solid white;
+                    box-shadow: 0 0 5px rgba(255, 215, 0, 0.2);
                 }
 
                 h1 {
-                    font-family: 'Rock Salt', cursive;
+                    font-family: 'Orbitron', sans-serif;
+                    font-weight: 900;
                     font-size: 3.5rem;
-                    margin: 10px 0;
-                    text-shadow: 4px 4px 0 #000;
-                    color: var(--yellow);
-                    letter-spacing: 2px;
-                    transform: rotate(-2deg);
+                    margin: 5px 0;
+                    color: white;
+                    text-transform: uppercase;
+                    letter-spacing: 4px;
+                    text-shadow: 2px 2px 0px var(--secondary);
                 }
                 
-                @media (max-width: 600px) {
-                    h1 { font-size: 2rem; }
-                }
+                @media (max-width: 600px) { h1 { font-size: 2rem; } }
 
-                .subtitle {
-                    color: #aaa;
-                    font-family: sans-serif;
-                    letter-spacing: 3px;
-                    text-transform: uppercase;
-                    font-size: 0.9rem;
+                .status-line {
+                    font-size: 0.8rem;
+                    color: #666;
+                    letter-spacing: 1px;
                 }
+                .blink { color: var(--accent); animation: blink 1s infinite; }
 
                 /* Controls */
                 .controls-section {
-                    background: rgba(255,255,255,0.05);
-                    border: 2px dashed rgba(255,255,255,0.2);
+                    background: rgba(10, 10, 10, 0.8);
+                    border: 1px solid var(--border);
+                    border-left: 4px solid var(--primary);
                     padding: 20px;
-                    margin-bottom: 50px;
-                    border-radius: 10px;
-                    position: relative;
-                    text-align: center;
+                    margin-bottom: 40px;
+                    backdrop-filter: blur(5px);
                 }
 
-                .tape-label {
-                    position: absolute;
-                    top: -15px;
-                    left: 50%;
-                    transform: translateX(-50%) rotate(-1deg);
-                    background: #ffeb3b;
-                    color: black;
-                    padding: 5px 20px;
-                    font-size: 1rem;
-                    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+                .panel-header {
+                    color: #666;
+                    font-size: 0.8rem;
+                    margin-bottom: 10px;
+                    border-bottom: 1px solid #222;
+                    display: inline-block;
+                    padding-right: 20px;
                 }
+                
+                .panel-spacer { height: 20px; }
 
                 .control-group {
                     display: flex;
                     justify-content: center;
                     flex-wrap: wrap;
-                    gap: 15px;
-                    margin-top: 15px;
+                    gap: 12px;
                 }
-                .small-gap { margin-top: 20px; gap: 10px; }
 
-                .retro-btn {
-                    font-family: 'Permanent Marker', cursive;
-                    border: none;
-                    padding: 12px 20px;
+                /* Buttons */
+                .tech-btn {
+                    background: transparent;
+                    border: 1px solid var(--border);
+                    color: var(--text);
+                    padding: 10px 20px;
+                    font-family: 'Share Tech Mono', monospace;
                     font-size: 1rem;
                     cursor: pointer;
-                    transition: transform 0.2s, box-shadow 0.2s;
-                    box-shadow: 4px 4px 0 #000;
+                    transition: all 0.2s;
+                    position: relative;
+                    overflow: hidden;
                     text-transform: uppercase;
                 }
-                
-                .retro-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
-                .retro-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
-                
-                /* Active State */
-                /* Active State */
-                .retro-btn.active {
-                    background: #ffeb3b !important;
-                    color: #000 !important;
-                    border: 3px solid #fff;
-                    transform: scale(1.15) rotate(-2deg);
-                    z-index: 15;
-                    box-shadow: 8px 8px 0 rgba(0,0,0,0.5);
-                    font-weight: bold;
+
+                .tech-btn:hover {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-color: var(--primary);
+                    color: var(--primary);
+                    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
                 }
+                
+                .tech-btn:active { transform: scale(0.98); }
 
-                .glitch { background: #0ff; color: #000; }
-                .cyber { background: #f0f; color: #fff; }
-                .pastel { background: #ffd1fb; color: #000; }
-                .polaroid { background: #fff; color: #000; }
-                .bw { background: #333; color: #fff; }
-                .reset { background: #333; color: #fff; border: 1px solid #555; }
-
-                .sm-btn {
-                    background: transparent;
-                    border: 2px solid #fff;
-                    color: #fff;
-                    padding: 8px 15px;
+                .mode-btn {
+                    background: #111;
+                    border: 1px solid #333;
+                    color: #888;
+                    padding: 8px 16px;
+                    font-family: 'Orbitron', sans-serif;
+                    font-size: 0.9rem;
                     cursor: pointer;
-                    font-family: sans-serif;
-                    font-weight: bold;
-                    border-radius: 20px;
-                    transition: 0.2s;
-                    font-size: 0.8rem;
+                    transition: 0.3s;
                 }
-                .sm-btn:hover { background: #fff; color: #000; }
                 
-                .sm-btn.active {
-                    background: #ffeb3b; 
-                    color: #000; 
-                    border-color: #ffeb3b;
-                    transform: scale(1.1);
-                    box-shadow: 0 0 10px #ffeb3b;
+                .mode-btn:hover { color: white; border-color: white; }
+                .mode-btn.active { 
+                    background: var(--primary); 
+                    color: black; 
+                    border-color: var(--primary);
+                    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+                    font-weight: bold;
                 }
 
                 /* Gallery Grid */
                 .gallery {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-                    gap: 40px;
-                    padding: 20px;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 20px;
+                    padding: 10px;
                 }
 
-                /* Polaroid Card */
-                .handwritten {
-                    position: absolute;
-                    bottom: 50px; /* Moved up */
-                    left: 0;
-                    width: 100%;
-                    text-align: center;
-                    color: #444;
-                    font-size: 1.4rem;
-                    font-family: 'Permanent Marker', cursive;
-                    transform: rotate(-1deg);
-                }
-
-                .card-actions {
-                    position: absolute;
-                    bottom: 15px;
-                    width: 100%;
-                    left: 0;
-                    text-align: center;
-                }
-
-                .download-btn-card {
-                    display: inline-block;
-                    text-decoration: none;
-                    font-family: sans-serif;
-                    font-weight: bold;
-                    font-size: 0.9rem;
-                    color: white;
-                    background: #333;
-                    border: 1px solid #000;
-                    padding: 8px 18px;
-                    border-radius: 30px;
-                    box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
-                    transition: all 0.2s;
-                    letter-spacing: 1px;
-                }
-                
-                .download-btn-card:hover { 
-                    background: #ffeb3b; 
-                    color: #000; 
-                    transform: scale(1.05);
-                    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
-                }
-                
-                .download-btn-card:active {
-                    transform: scale(0.95);
-                }
-
-                /* Polaroid Card */
-                .polaroid-card {
-                    background: white;
-                    padding: 15px 15px 85px 15px; /* More bottom padding for button */
-                    box-shadow: 10px 10px 15px rgba(0,0,0,0.5);
-                    transform: rotate(var(--rot));
-                    transition: transform 0.3s, z-index 0s;
+                /* Tech Card */
+                .tech-card {
+                    background: rgba(20, 20, 20, 0.9);
+                    border: 1px solid #333;
+                    padding: 10px;
                     position: relative;
-                    animation: fadeUp 0.6s ease-out forwards;
-                    opacity: 0;
+                    transition: transform 0.3s, border-color 0.3s;
                 }
                 
-                .polaroid-card:nth-child(odd) { --rot: -2deg; }
-                .polaroid-card:nth-child(even) { --rot: 2deg; }
-                .polaroid-card:nth-child(3n) { --rot: 1deg; }
-
-                .polaroid-card:hover {
-                    transform: scale(1.05) rotate(0deg);
+                .tech-card:hover {
+                    transform: translateY(-5px);
+                    border-color: var(--accent);
+                    box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
                     z-index: 10;
-                    box-shadow: 20px 20px 30px rgba(0,0,0,0.7);
+                }
+
+                .card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 0.7rem;
+                    color: #555;
+                    margin-bottom: 5px;
+                    font-family: 'Orbitron', sans-serif;
                 }
 
                 .image-frame {
-                    background: #eee;
-                    width: 100%;
-                    aspect-ratio: 1; /* Square crop suggestion or auto */
+                    background: #000;
+                    border: 1px solid #222;
+                    aspect-ratio: 1;
                     overflow: hidden;
-                    border: 1px solid #ddd;
+                    margin-bottom: 10px;
                 }
                 
                 .image-frame img {
@@ -359,71 +326,62 @@ export default function Gallery() {
                     height: 100%;
                     object-fit: cover;
                     display: block;
-                    filter: contrast(1.1) brightness(1.1);
-                }
-
-                .tape {
-                    position: absolute;
-                    top: -15px;
-                    left: 50%;
-                    transform: translateX(-50%) rotate(2deg);
-                    width: 100px;
-                    height: 30px;
-                    background-color: rgba(255, 255, 255, 0.3);
-                    backdrop-filter: blur(2px);
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                    border: 1px solid rgba(255,255,255,0.4);
-                }
-
-                .handwritten {
-                    position: absolute;
-                    bottom: 25px;
-                    left: 0;
-                    width: 100%;
-                    text-align: center;
-                    color: #444;
-                    font-size: 1.2rem;
-                    font-family: 'Permanent Marker', cursive;
-                    transform: rotate(-1deg);
-                }
-
-                .card-actions {
-                    position: absolute;
-                    bottom: 5px;
-                    right: 10px;
-                }
-
-                .save-link {
-                    text-decoration: none;
-                    font-family: sans-serif;
-                    font-size: 0.7rem;
-                    color: #999;
-                    text-transform: uppercase;
-                    border: 1px solid #ddd;
-                    padding: 2px 5px;
-                    border-radius: 4px;
-                }
-                .save-link:hover { background: #eee; color: #333; }
-
-                /* Animations */
-                @keyframes fadeUp {
-                    from { transform: translateY(50px) rotate(0); opacity: 0; }
-                    to { opacity: 1; }
+                    transition: transform 0.5s;
                 }
                 
-                .delay-0 { animation-delay: 0.1s; }
-                .delay-1 { animation-delay: 0.2s; }
-                .delay-2 { animation-delay: 0.3s; }
-                .delay-3 { animation-delay: 0.4s; }
-                .delay-4 { animation-delay: 0.5s; }
+                .tech-card:hover img { transform: scale(1.05); }
 
+                .card-footer {
+                    text-align: center;
+                }
+
+                .download-btn-card {
+                    display: block;
+                    width: 100%;
+                    background: #111;
+                    border: 1px solid #333;
+                    color: white;
+                    padding: 8px 0;
+                    text-decoration: none;
+                    text-transform: uppercase;
+                    font-size: 0.8rem;
+                    transition: 0.2s;
+                }
+                
+                .download-btn-card:hover {
+                    background: var(--accent);
+                    color: black;
+                    border-color: var(--accent);
+                }
+
+                /* Corner Decorations */
+                .corner-decor {
+                    position: absolute;
+                    width: 6px;
+                    height: 6px;
+                    border: 1px solid #555;
+                    transition: 0.3s;
+                }
+                .top-left { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+                .top-right { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+                .bottom-left { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+                .bottom-right { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+                
+                .tech-card:hover .corner-decor { border-color: var(--accent); }
+
+                /* Footer */
                 footer {
                     text-align: center;
-                    margin-top: 50px;
-                    color: #666;
-                    font-family: sans-serif;
-                    font-size: 0.8rem;
+                    margin-top: 60px;
+                    color: #444;
+                    font-size: 0.7rem;
+                    border-top: 1px solid #222;
+                    padding-top: 20px;
                 }
+
+                @keyframes blink { 50% { opacity: 0; } }
+                @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
             `}</style>
         </div>
     );

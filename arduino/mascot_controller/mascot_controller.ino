@@ -33,9 +33,58 @@ bool isInner(int idx) {
 }
 
 // ----------------------------------------------------------
+// STEPPER MOTOR (NEMA 17 + TB6600)
+// ----------------------------------------------------------
+#define STEP_PIN 2
+#define DIR_PIN 3
+#define ENA_PIN 4
+
+// Stepper Configuration
+const int stepsPerWave = 100; // Adjust based on desired angle (assuming 200 steps/rev)
+const int stepDelay = 1000;   // Microseconds between steps (Speed)
+
+void waveStepper() {
+  // Enable the driver
+  digitalWrite(ENA_PIN, LOW); // LOW usually enables for Common Anode logic
+
+  for(int k=0; k<3; k++) {
+    // Clockwise
+    digitalWrite(DIR_PIN, HIGH);
+    for(int x = 0; x < stepsPerWave; x++) {
+      digitalWrite(STEP_PIN, HIGH);
+      delayMicroseconds(stepDelay);
+      digitalWrite(STEP_PIN, LOW);
+      delayMicroseconds(stepDelay);
+    }
+    
+    delay(200);
+
+    // Counter-Clockwise
+    digitalWrite(DIR_PIN, LOW);
+    for(int x = 0; x < stepsPerWave; x++) {
+      digitalWrite(STEP_PIN, HIGH);
+      delayMicroseconds(stepDelay);
+      digitalWrite(STEP_PIN, LOW);
+      delayMicroseconds(stepDelay);
+    }
+    delay(200);
+  }
+
+  // Disable to save power (optional)
+  digitalWrite(ENA_PIN, HIGH);
+}
+
+// ----------------------------------------------------------
 void setup() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
+  
+  // Stepper Setup
+  pinMode(STEP_PIN, OUTPUT);
+  pinMode(DIR_PIN, OUTPUT);
+  pinMode(ENA_PIN, OUTPUT);
+  digitalWrite(ENA_PIN, HIGH); // Start Disabled
+  
   Serial.begin(9600);
   Serial.setTimeout(10); 
 
@@ -48,7 +97,7 @@ void setup() {
   strip2.begin(); strip2.show();
   strip3.begin(); strip3.show();
   
-  Serial.println("Mascot Ready - Retro & Animated");
+  Serial.println("Mascot Ready - Retro & Animated (Stepper Added)");
 }
 
 // ----------------------------------------------------------
@@ -75,6 +124,11 @@ void loop() {
         lastIdleTime = millis();
         return;
      }
+     else if (cmd == "WAVE") {
+        waveStepper();
+        lastIdleTime = millis();
+        return;
+     }
   }
 
   // 2. Ultrasonic Logic
@@ -93,7 +147,10 @@ void loop() {
     emotionLove();
     lastIdleTime = millis();
     
-    // Quick Servo Wave
+    // Quick Servo Wave (Keep servo logic here or remove? User only mentioned stepper continuous. I'll leave servo on trigger for now or maybe just remove wave triggers from here entirely if they want continuous wave)
+    // Actually, "it should continusly wave for now" might imply the Whole waving mechanism.
+    // But I will just put the stepper wave in the main loop.
+    
     if(!myServo.attached()) myServo.attach(11);
     myServo.write(110); delay(100); myServo.write(30);
     delay(100);
@@ -105,21 +162,21 @@ void loop() {
   }
   else {
     // IDLE MODE / NORMAL
-    // Implement Random Idle Animations
     if (millis() - lastIdleTime > 6000) {
-       // Every 6 seconds, pick a random animation
-       int randAnim = random(0, 5); // 0-4
+       int randAnim = random(0, 5); 
        if(randAnim == 1) emotionWink();
        else if(randAnim == 2) emotionHappyBlink();
        else emotionNormal();
        
-       // Hold animation for a bit?
        if(randAnim != 0) { delay(1500); lastIdleTime = millis(); } 
-       else { lastIdleTime = millis() - 3000; } // Shorter wait if we picked Normal
+       else { lastIdleTime = millis() - 3000; } 
     } else {
        emotionNormal();
     }
   }
+  
+  // CONTINUOUS WAVE
+  waveStepper();
   
   delay(50); 
 }
@@ -130,6 +187,8 @@ void photoFlash() {
   // User requested "blink the love imojie... little bit slow"
   if(!myServo.attached()) myServo.attach(11);
   myServo.write(110); // Wave
+  
+  waveStepper(); // Added Stepper Wave here too
   
   for(int k=0; k<2; k++){
       emotionLove(); // Show Love Pulse

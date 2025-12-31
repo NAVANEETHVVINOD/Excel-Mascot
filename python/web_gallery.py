@@ -12,6 +12,7 @@ if not os.path.exists(STATIC_DIR): os.makedirs(STATIC_DIR)
 
 # Global State for Filter
 current_filter = "NORMAL"
+current_mode = "SINGLE"
 
 def get_ip_address():
     try:
@@ -20,7 +21,7 @@ def get_ip_address():
         ip = s.getsockname()[0]
         s.close()
         return ip
-    except:
+    except Exception:
         return "127.0.0.1"
 
 ip_addr = get_ip_address()
@@ -32,152 +33,149 @@ HTML_TEMPLATE = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mascot Gallery</title>
+    <title>Mascot Control</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --paper: #fdfbf7;
-            --ink: #2b2b2b;
-            --red: #d32f2f;
+            --bg: #050505;
+            --grid: #1a1a1a;
+            --primary: #FFD700; /* Gold */
+            --secondary: #FF8C00; /* Orange */
+            --accent: #00f3ff; /* Cyan */
+            --text: #e0e0e0;
+            --surface: #0a0a0a;
+            --border: #333;
         }
         
         body {
-            /* Corkboard Pattern */
-            background-color: #5c4033;
-            background-image: repeating-linear-gradient(45deg, #6b4c3e 25%, transparent 25%, transparent 75%, #6b4c3e 75%, #6b4c3e), repeating-linear-gradient(45deg, #6b4c3e 25%, #5c4033 25%, #5c4033 75%, #6b4c3e 75%, #6b4c3e);
-            background-position: 0 0, 10px 10px;
-            background-size: 20px 20px;
-            
-            color: var(--ink);
-            font-family: 'Permanent Marker', cursive;
-            margin: 0; padding: 10px; /* Reduced padding for mobile */
-            min-height: 100vh;
+            /* Tech Grid Background */
+            background-color: var(--bg);
+            background-image: 
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            padding: 20px;
+            text-align: center;
         }
 
         h1 {
-            font-size: 2.5em; /* Smaller base size */
-            text-align: center;
-            color: #ffeb3b; 
-            text-shadow: 3px 3px 0px #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 4px;
             margin-bottom: 5px;
-            transform: rotate(-2deg);
-        }
-        
-        .subtitle {
-            text-align: center; color: #ddd; margin-bottom: 20px; font-size: 1.0em;
-            text-shadow: 2px 2px 0px #000;
+            text-shadow: 2px 2px 0px var(--secondary);
         }
 
-        /* Controls Section - Sticker Style */
+        .subtitle {
+            color: var(--primary);
+            font-size: 1.0em;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Controls Section - Tech Panel */
         .controls {
             display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            padding: 20px;
+            backdrop-filter: blur(5px);
+            max-width: 800px;
+            margin: 0 auto 40px auto;
         }
         
+        .panel-label {
+            width: 100%; text-align: left; color: #666; font-size: 0.8em; margin-bottom: 10px; border-bottom: 1px solid #222;
+        }
+
         .btn {
-            background: #fff;
-            border: 2px solid #000;
-            color: #000;
-            padding: 8px 15px; /* Smaller padding */
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 20px;
             cursor: pointer;
-            font-family: 'Permanent Marker', cursive;
-            font-size: 1.0em;
-            transform: rotate(2deg);
-            box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
-            transition: 0.2s;
-            flex: 0 1 auto; /* Mobile friendly flex */
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            position: relative;
         }
-        
+
         .btn:hover {
-            transform: scale(1.1) rotate(0deg);
-            background: #ffeb3b;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
         }
-        
+
         .btn.active {
-            background: #00e5ff;
-            transform: rotate(-3deg) scale(1.1);
-            box-shadow: 4px 4px 0px #000;
+            background: var(--primary);
+            color: black;
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            font-weight: bold;
         }
 
         /* Gallery Grid */
         .gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Smaller min width for mobile 2-col */
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 20px;
-            padding: 10px;
             max-width: 1200px;
             margin: 0 auto;
         }
-        
-        @media (min-width: 600px) {
-             .gallery { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 40px; }
-             h1 { font-size: 3.5em; }
-             .btn { padding: 10px 25px; font-size: 1.2em; }
-        }
 
-        /* Polaroid Card */
-        .photo-card {
-            background: white;
-            padding: 10px 10px 50px 10px;
-            box-shadow: 5px 5px 10px rgba(0,0,0,0.4);
-            transform: rotate(-1deg);
-            transition: transform 0.3s;
+        /* Tech Card */
+        .tech-card {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid #333;
+            padding: 10px;
             position: relative;
-            text-align: center;
+            transition: transform 0.3s;
         }
         
-        .photo-card:nth-child(even) { transform: rotate(1deg); }
-        .photo-card:hover { 
-            transform: scale(1.02); 
-            z-index: 10; 
-            box-shadow: 10px 10px 20px rgba(0,0,0,0.6);
-        }
-        
-        /* Tape effect */
-        .photo-card:before {
-            content: '';
-            position: absolute;
-            top: -10px; left: 50%; transform: translateX(-50%);
-            width: 60px; height: 25px;
-            background: rgba(255,255,255,0.4);
-            border-left: 1px dashed rgba(0,0,0,0.1);
-            border-right: 1px dashed rgba(0,0,0,0.1);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        .tech-card:hover { border-color: var(--accent); transform: translateY(-5px); }
+
+        .image-frame {
+            background: #000;
+            width: 100%;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border: 1px solid #222;
+            margin-bottom: 10px;
         }
 
-        .photo-card img {
-            width: 100%;
-            height: auto;
-            border: 1px solid #ddd;
-            filter: contrast(110%); 
+        .image-frame img {
+            width: 100%; height: 100%; object-fit: cover;
         }
         
-        .caption {
-            position: absolute;
-            bottom: 25px; left: 0; right: 0;
-            text-align: center;
-            font-size: 1.0em;
-            color: #555;
+        .card-info {
+            font-size: 0.8em; color: #666; display: flex; justify-content: space-between; margin-bottom: 5px;
         }
         
         .actions {
-            position: absolute;
-            bottom: 5px; left: 0; right: 0;
-            display: flex; justify-content: space-around;
-            padding: 0 10px;
+            display: flex; justify-content: space-between; gap: 10px;
         }
         
         .action-link {
+            flex: 1;
             text-decoration: none;
+            padding: 5px;
             font-size: 0.8em;
-            font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-family: sans-serif; /* Clean font for buttons */
+            text-transform: uppercase;
+            border: 1px solid #333;
+            color: #aaa;
+            transition: 0.2s;
         }
         
-        .download-btn { color: #fff; background: #2196F3; }
-        .delete-btn { color: #fff; background: var(--red); cursor: pointer; }
+        .download-btn:hover { background: var(--accent); color: black; border-color: var(--accent); }
+        .delete-btn:hover { background: #d32f2f; color: white; border-color: #d32f2f; }
         
     </style>
     <script>
@@ -185,7 +183,8 @@ HTML_TEMPLATE = """
             fetch('/set_filter/' + mode)
             .then(response => response.json())
             .then(data => {
-                document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+                console.log(data); 
+                document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
                 document.getElementById('btn-' + mode).classList.add('active');
             });
         }
@@ -194,14 +193,15 @@ HTML_TEMPLATE = """
             fetch('/set_mode/' + mode)
             .then(response => response.json())
             .then(data => {
-                document.querySelectorAll('[id^=mode-]').forEach(b => b.classList.remove('active'));
+                console.log(data); 
+                document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
                 document.getElementById('mode-' + mode).classList.add('active');
             });
         }
-        
+
         function deletePhoto(filename) {
-            if(confirm("Confirm Delete?")) {
-                fetch('/delete_photo/' + filename)
+            if(confirm("Confirm deletion?")) {
+                fetch('/delete/' + filename)
                 .then(r => r.json())
                 .then(d => {
                     if(d.status === 'ok') {
@@ -218,25 +218,38 @@ HTML_TEMPLATE = """
             .then(r => r.json())
             .then(files => {
                 const gallery = document.getElementById('gallery-container');
-                // Check for deleted files (if we want to sync removal automatically, 
-                // we'd need to check if DOM elements exist that are NOT in 'files')
-                // For now, simpler to just add new ones.
                 
-                files.forEach(file => {
-                    if(!knownFiles.has(file)) {
+                // Remove deleted
+                // Simplified: Just reload all for now or optimize later. 
+                // For now, let's keep it simple: clear and rebuild or just prepend new?
+                // The original code prepended. Let's simple check.
+                
+                files.reverse().forEach(file => {
+                     if (!knownFiles.has(file)) {
                         knownFiles.add(file);
+                        
                         const card = document.createElement('div');
-                        card.className = 'photo-card';
+                        card.className = 'tech-card';
                         card.id = 'card-' + file;
                         card.innerHTML = `
-                            <img src="/photos/${file}">
-                            <div class="caption">Mascot 2025</div>
+                            <div class="card-info">
+                                <span>IMG_LOG</span>
+                                <span>DATA</span>
+                            </div>
+                            <div class="image-frame">
+                                <img src="/photos/${file}" loading="lazy">
+                            </div>
                             <div class="actions">
-                                <a href="/photos/${file}" download="MascotPolaroid.jpg" class="action-link download-btn">DOWNLOAD</a>
-                                <span onclick="deletePhoto('${file}')" class="action-link delete-btn">DELETE</span>
+                                <a href="/photos/${file}" download class="action-link download-btn">DOWN</a>
+                                <div onclick="deletePhoto('${file}')" class="action-link delete-btn" style="cursor: pointer;">DEL</div>
                             </div>
                         `;
-                        gallery.insertBefore(card, gallery.firstChild);
+                        // Prepend
+                        if(gallery.firstChild) {
+                             gallery.insertBefore(card, gallery.firstChild);
+                        } else {
+                             gallery.appendChild(card);
+                        }
                     }
                 });
             });
@@ -247,38 +260,39 @@ HTML_TEMPLATE = """
     </script>
 </head>
 <body>
-    <h1>MASCOT MEMORIES</h1>
-    <div class="subtitle">Tech Fest 2k25</div>
+    <h1>MASCOT CONTROL</h1>
+    <div class="subtitle">EXCEL TECHFEST 2025 // SYSTEM V2.0</div>
     
     <div class="controls">
-        <span style="width: 100%; text-align: center; color: #fff; text-shadow: 1px 1px 0 #000; margin-bottom: 5px;">FILTERS</span>
-        <button id="btn-NORMAL" class="btn" onclick="setFilter('NORMAL')">Color</button>
-        <button id="btn-BW" class="btn" onclick="setFilter('BW')">B&W</button>
-        <button id="btn-VINTAGE" class="btn" onclick="setFilter('VINTAGE')">Sepia</button>
-        <button id="btn-POLAROID" class="btn" onclick="setFilter('POLAROID')">Polaroid</button>
+        <div class="panel-label">/// FILTERS_MODULE</div>
+        <!-- Filter Buttons -->
+        <!-- These IDs match Python var naming usually -->
+        <button id="btn-NORMAL" class="btn btn-filter" onclick="setFilter('NORMAL')">RESET</button>
+        <button id="btn-GLITCH" class="btn btn-filter" onclick="setFilter('GLITCH')">GLITCH</button>
+        <button id="btn-CYBERPUNK" class="btn btn-filter" onclick="setFilter('CYBERPUNK')">NEON</button>
+        <button id="btn-PASTEL" class="btn btn-filter" onclick="setFilter('PASTEL')">DREAMY</button>
+        <button id="btn-BW" class="btn btn-filter" onclick="setFilter('BW')">NOIR</button>
+        <button id="btn-POLAROID" class="btn btn-filter" onclick="setFilter('POLAROID')">RETRO</button>
     </div>
-
-    <div class="controls" style="margin-top: -15px;">
-        <span style="width: 100%; text-align: center; color: #fff; text-shadow: 1px 1px 0 #000; margin-bottom: 5px;">MODE</span>
-        <button id="mode-SINGLE" class="btn" onclick="setMode('SINGLE')">Single</button>
-        <button id="mode-BURST" class="btn" onclick="setMode('BURST')">Burst</button>
-        <button id="mode-GIF" class="btn" onclick="setMode('GIF')">GIF</button>
-        <!-- <button id="mode-COUNTDOWN" class="btn" onclick="toggleCountdown()">Timer</button> -->
+    
+    <div class="controls">
+         <div class="panel-label">/// CAPTURE_MODE</div>
+        <button id="mode-SINGLE" class="btn btn-mode" onclick="setMode('SINGLE')">[ SINGLE ]</button>
+        <button id="mode-BURST" class="btn btn-mode" onclick="setMode('BURST')">[ BURST ]</button>
+        <button id="mode-GIF" class="btn btn-mode" onclick="setMode('GIF')">[ GIF ]</button>
     </div>
 
     <div class="gallery" id="gallery-container">
     </div>
 
     <script>
+        // Init active state
         fetch('/get_filter').then(r=>r.json()).then(d => {
             if(d.filter) {
                 let id = 'btn-' + d.filter;
                 let el = document.getElementById(id);
                 if(el) el.classList.add('active');
             }
-        });
-        
-        fetch('/get_mode').then(r=>r.json()).then(d => {
             if(d.mode) {
                 let id = 'mode-' + d.mode;
                 let el = document.getElementById(id);
@@ -290,65 +304,55 @@ HTML_TEMPLATE = """
 </html>
 """
 
-@app.route("/gallery")
+@app.route('/')
 def gallery():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route("/api/photos")
-def api_photos():
-    if not os.path.exists(PHOTO_DIR): return jsonify([])
-    files = sorted([f for f in os.listdir(PHOTO_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))],
-                   key=lambda x: os.path.getmtime(os.path.join(PHOTO_DIR, x)))
-    return jsonify(files) 
+@app.route('/gallery')
+def gallery_view():
+    return render_template_string(HTML_TEMPLATE)
 
-@app.route("/photos/<path:filename>")
+@app.route('/api/photos')
+def api_photos():
+    files = [f for f in os.listdir(PHOTO_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
+    # Sort by modification time
+    files.sort(key=lambda x: os.path.getmtime(os.path.join(PHOTO_DIR, x)))
+    return jsonify(files)
+
+@app.route('/photos/<path:filename>')
 def photos(filename):
     return send_from_directory(PHOTO_DIR, filename)
 
-@app.route("/delete_photo/<path:filename>")
-def delete_photo(filename):
-    try:
-        path = os.path.join(PHOTO_DIR, filename)
-        if os.path.exists(path):
-            os.remove(path)
-            return jsonify({"status": "ok"})
-    except:
-        pass
-    return jsonify({"status": "error"})
-
-@app.route("/set_filter/<mode>")
+@app.route('/set_filter/<mode>')
 def set_filter(mode):
     global current_filter
-    if mode in ["NORMAL", "CARTOON", "VINTAGE", "BW", "POLAROID"]:
-        current_filter = mode
-    return jsonify({"status": "ok", "filter": current_filter})
+    current_filter = mode
+    print(f"Filter set to: {mode}")
+    return jsonify({"status": "ok", "filter": mode})
 
-@app.route("/get_filter")
-def get_filter():
-    return jsonify({"filter": current_filter})
-
-# Global State for Capture Mode
-current_mode = "SINGLE"
-
-@app.route("/set_mode/<mode>")
-def set_mode(mode):
+@app.route('/set_mode/<mode>')
+def set_mode_route(mode):
     global current_mode
-    if mode in ["SINGLE", "BURST", "GIF"]:
-        current_mode = mode
-    return jsonify({"status": "ok", "mode": current_mode})
+    current_mode = mode
+    print(f"Mode set to: {mode}")
+    return jsonify({"status": "ok", "mode": mode})
 
-@app.route("/get_mode")
-def get_mode():
-    return jsonify({"mode": current_mode})
+@app.route('/get_filter')
+def get_filter():
+    return jsonify({"filter": current_filter, "mode": current_mode})
 
-def run_server(port=5000):
-    import logging
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+@app.route('/delete/<filename>')
+def delete_file(filename):
+    try:
+        os.remove(os.path.join(PHOTO_DIR, filename))
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+def start_gallery_server():
+    # Run on 0.0.0.0 to be accessible
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
 def start_gallery_thread():
-    t = threading.Thread(target=run_server)
-    t.daemon = True
+    t = threading.Thread(target=start_gallery_server, daemon=True)
     t.start()
-    return t
