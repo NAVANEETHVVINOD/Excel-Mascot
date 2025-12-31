@@ -9,7 +9,6 @@ export default function Gallery() {
     const [activeFilter, setActiveFilter] = useState(null);
     const [loading, setLoading] = useState(true);
     const [visiblePhotos, setVisiblePhotos] = useState(new Set());
-    const timelineRef = useRef(null);
     const photoRefs = useRef({});
 
     useEffect(() => {
@@ -21,7 +20,7 @@ export default function Gallery() {
                 setPhotos(prev => [{ ...payload.new, isNew: true }, ...prev]);
                 setTimeout(() => {
                     setPhotos(prev => prev.map(p => p.id === payload.new.id ? { ...p, isNew: false } : p));
-                }, 1000);
+                }, 1500);
             })
             .subscribe();
 
@@ -47,7 +46,7 @@ export default function Gallery() {
                     }
                 });
             },
-            { threshold: 0.2, rootMargin: '0px 0px -50px 0px' }
+            { threshold: 0.15, rootMargin: '0px 0px -100px 0px' }
         );
 
         Object.values(photoRefs.current).forEach(ref => {
@@ -105,6 +104,23 @@ export default function Gallery() {
         return date.getFullYear();
     };
 
+    const downloadPhoto = async (url, filename) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename || 'mascot_photo.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            window.open(url, '_blank');
+        }
+    };
+
     return (
         <div className="page-container">
             <Head>
@@ -114,12 +130,13 @@ export default function Gallery() {
             </Head>
 
             {/* Background */}
+            <div className="bg-image"></div>
             <div className="bg-overlay"></div>
 
-            {/* MASCOT Heading */}
+            {/* Header */}
             <header className="mascot-header">
-                <h1 className="mascot-title">MASCOT</h1>
-                <p className="mascot-subtitle">EXCEL TECHFEST 2025 // PHOTO_BOOTH_V2.1</p>
+                <h1 className="mascot-title">VISUAL LOGS</h1>
+                <p className="mascot-subtitle">EXCEL TECHFEST 2025 // MASCOT_BOOTH</p>
             </header>
 
             {/* Controls Panel */}
@@ -132,6 +149,7 @@ export default function Gallery() {
                         <button className={`filter-btn ${activeFilter === 'DREAMY' ? 'active' : ''}`} onClick={() => setFilter('DREAMY')}>DREAMY</button>
                         <button className={`filter-btn ${activeFilter === 'RETRO' ? 'active' : ''}`} onClick={() => setFilter('RETRO')}>RETRO</button>
                         <button className={`filter-btn ${activeFilter === 'NOIR' ? 'active' : ''}`} onClick={() => setFilter('NOIR')}>NOIR</button>
+                        <button className={`filter-btn ${activeFilter === 'BW' ? 'active' : ''}`} onClick={() => setFilter('BW')}>B&W</button>
                     </div>
                 </div>
                 <div className="panel-section">
@@ -145,54 +163,68 @@ export default function Gallery() {
             </section>
 
             {/* Timeline Gallery */}
-            <main className="timeline-container" ref={timelineRef}>
+            <main className="timeline-container">
                 {loading ? (
                     <div className="loading-spinner">
                         <div className="spinner"></div>
                         <p>Loading memories...</p>
                     </div>
+                ) : photos.length === 0 ? (
+                    <div className="empty-state">
+                        <p>No photos yet. Show a thumbs up to capture!</p>
+                    </div>
                 ) : (
-                    <>
-                        <div className="timeline-track">
-                            {photos.map((photo, index) => (
-                                <div 
-                                    key={photo.id} 
-                                    className={`photo-node ${visiblePhotos.has(photo.id.toString()) ? 'visible' : ''} ${photo.isNew ? 'new-photo' : ''} ${index % 2 === 0 ? 'left' : 'right'}`}
-                                    ref={el => photoRefs.current[photo.id] = el}
-                                    data-id={photo.id}
-                                >
-                                    {/* Animated line segment */}
-                                    <div className="line-segment">
-                                        <div className="line-fill"></div>
-                                    </div>
-                                    
-                                    {/* Connection curve to photo */}
-                                    <svg className="curve-connector" viewBox="0 0 100 50" preserveAspectRatio="none">
-                                        <path className="curve-path" d={index % 2 === 0 ? "M50,0 Q50,25 0,25" : "M50,0 Q50,25 100,25"} />
+                    <div className="timeline-track">
+                        {/* Main vertical line */}
+                        <div className="main-timeline-line"></div>
+                        
+                        {photos.map((photo, index) => (
+                            <div 
+                                key={photo.id} 
+                                className={`photo-node ${visiblePhotos.has(photo.id.toString()) ? 'visible' : ''} ${photo.isNew ? 'new-photo' : ''} ${index % 2 === 0 ? 'left' : 'right'}`}
+                                ref={el => photoRefs.current[photo.id] = el}
+                                data-id={photo.id}
+                            >
+                                {/* Branch line from center to photo */}
+                                <div className="branch-line">
+                                    <svg className="branch-svg" viewBox="0 0 200 100" preserveAspectRatio="none">
+                                        <path 
+                                            className="branch-path" 
+                                            d={index % 2 === 0 
+                                                ? "M100,0 L100,50 Q100,70 80,70 L0,70" 
+                                                : "M100,0 L100,50 Q100,70 120,70 L200,70"
+                                            } 
+                                        />
                                     </svg>
-                                    
-                                    {/* Timeline dot */}
-                                    <div className="timeline-dot"></div>
-                                    
-                                    {/* Polaroid card */}
-                                    <div className="polaroid-card">
-                                        <div className="pin"></div>
-                                        <div className="photo-frame">
-                                            <img src={photo.image_url} alt="Memory" loading="lazy" />
-                                        </div>
-                                        <div className="photo-info">
-                                            <p className="rec-date">REC_DATE: {formatDate(photo.created_at)}</p>
-                                            <p className="location">LOC: REC</p>
-                                        </div>
-                                        <div className="photo-footer">
-                                            <span className="photo-id">EXCEL_LOG_{String(index + 1).padStart(2, '0')}</span>
-                                            <span className="excel-badge">[EXCELETED]</span>
-                                        </div>
-                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </>
+                                
+                                {/* Timeline dot on center line */}
+                                <div className="timeline-dot"></div>
+                                
+                                {/* Polaroid card */}
+                                <div className="polaroid-card">
+                                    <div className="pin"></div>
+                                    <div className="photo-frame">
+                                        <img src={photo.image_url} alt="Memory" loading="lazy" />
+                                    </div>
+                                    <div className="photo-info">
+                                        <p className="rec-date">REC_DATE: {formatDate(photo.created_at)}</p>
+                                        <p className="location">LOC: College Ground</p>
+                                    </div>
+                                    <div className="photo-footer">
+                                        <span className="photo-id">EXCEL_LOG_{String(index + 1).padStart(2, '0')}</span>
+                                        <span className="excel-badge">[EXCELETED]</span>
+                                    </div>
+                                    <button 
+                                        className="download-btn"
+                                        onClick={() => downloadPhoto(photo.image_url, `excel_photo_${photo.id}.jpg`)}
+                                    >
+                                        ↓ DOWNLOAD
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </main>
 
@@ -204,9 +236,9 @@ export default function Gallery() {
             <style jsx global>{`
                 :root {
                     --bg-dark: #050505;
-                    --bg-card: #1a1a1a;
-                    --gold: #FFD700;
-                    --orange: #FF8C00;
+                    --gold: #D4A84B;
+                    --gold-bright: #FFD700;
+                    --orange: #E8943A;
                     --text: #e0e0e0;
                     --text-dim: #666;
                     --border: #333;
@@ -227,68 +259,67 @@ export default function Gallery() {
                     min-height: 100vh;
                 }
 
+                /* Background Image */
+                .bg-image {
+                    position: fixed;
+                    top: 0; left: 0;
+                    width: 100%; height: 100%;
+                    background: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1920&q=80');
+                    background-size: cover;
+                    background-position: center;
+                    background-attachment: fixed;
+                    filter: grayscale(100%) brightness(0.25) contrast(1.1);
+                    z-index: -2;
+                }
+
                 .bg-overlay {
                     position: fixed;
                     top: 0; left: 0;
                     width: 100%; height: 100%;
                     background: 
-                        linear-gradient(180deg, rgba(5, 5, 5, 0.7) 0%, rgba(5, 5, 5, 0.85) 100%),
-                        url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1920&q=80');
-                    background-size: cover;
-                    background-position: center;
-                    background-attachment: fixed;
-                    filter: grayscale(100%) brightness(0.3) contrast(1.2);
-                    z-index: -2;
-                }
-
-                .bg-overlay::after {
-                    content: '';
-                    position: absolute;
-                    top: 0; left: 0;
-                    width: 100%; height: 100%;
-                    background: 
-                        radial-gradient(ellipse at 30% 20%, rgba(255, 140, 0, 0.15) 0%, transparent 50%),
-                        radial-gradient(ellipse at 70% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+                        radial-gradient(ellipse at 30% 20%, rgba(212, 168, 75, 0.12) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(232, 148, 58, 0.08) 0%, transparent 50%),
+                        linear-gradient(180deg, rgba(5, 5, 5, 0.3) 0%, rgba(5, 5, 5, 0.6) 100%);
                     z-index: -1;
                 }
 
-                /* MASCOT Header */
+                /* Header */
                 .mascot-header {
                     text-align: center;
-                    padding: 60px 20px 40px;
+                    padding: 50px 20px 30px;
                 }
 
                 .mascot-title {
                     font-family: 'Orbitron', sans-serif;
-                    font-size: 4rem;
-                    font-weight: 900;
+                    font-size: 3rem;
+                    font-weight: 700;
                     color: var(--gold);
-                    letter-spacing: 15px;
+                    letter-spacing: 10px;
                     text-shadow: 
-                        0 0 20px rgba(255, 215, 0, 0.5),
-                        0 0 40px rgba(255, 215, 0, 0.3),
-                        0 0 60px rgba(255, 140, 0, 0.2);
-                    margin-bottom: 15px;
+                        0 0 30px rgba(212, 168, 75, 0.5),
+                        0 0 60px rgba(212, 168, 75, 0.3);
+                    margin-bottom: 10px;
                 }
 
                 .mascot-subtitle {
-                    font-size: 0.85rem;
+                    font-size: 0.8rem;
                     color: var(--text-dim);
                     letter-spacing: 3px;
                 }
 
                 /* Controls Panel */
                 .controls-panel {
-                    max-width: 900px;
-                    margin: 0 auto 50px;
-                    padding: 25px;
-                    background: rgba(15, 15, 15, 0.9);
+                    max-width: 850px;
+                    margin: 0 auto 40px;
+                    padding: 20px;
+                    background: rgba(10, 10, 10, 0.85);
                     border: 1px solid var(--border);
-                    border-left: 4px solid var(--gold);
+                    border-left: 3px solid var(--gold);
+                    backdrop-filter: blur(10px);
                 }
 
                 .panel-section {
-                    margin-bottom: 20px;
+                    margin-bottom: 15px;
                 }
 
                 .panel-section:last-child {
@@ -297,17 +328,17 @@ export default function Gallery() {
 
                 .panel-label {
                     color: var(--text-dim);
-                    font-size: 0.75rem;
-                    margin-bottom: 12px;
+                    font-size: 0.7rem;
+                    margin-bottom: 10px;
                     border-bottom: 1px solid #222;
                     display: inline-block;
-                    padding-right: 20px;
+                    padding-right: 15px;
                 }
 
                 .filter-buttons, .mode-buttons {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 10px;
+                    gap: 8px;
                     justify-content: center;
                 }
 
@@ -315,8 +346,9 @@ export default function Gallery() {
                     background: transparent;
                     border: 1px solid var(--border);
                     color: var(--text);
-                    padding: 10px 22px;
+                    padding: 8px 16px;
                     font-family: 'Share Tech Mono', monospace;
+                    font-size: 0.8rem;
                     cursor: pointer;
                     transition: all 0.3s ease;
                     text-transform: uppercase;
@@ -325,24 +357,24 @@ export default function Gallery() {
                 .filter-btn:hover {
                     border-color: var(--gold);
                     color: var(--gold);
-                    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+                    box-shadow: 0 0 12px rgba(212, 168, 75, 0.3);
                 }
 
                 .filter-btn.active {
                     background: var(--gold);
                     color: #000;
                     border-color: var(--gold);
-                    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+                    box-shadow: 0 0 20px rgba(212, 168, 75, 0.5);
                     font-weight: bold;
                 }
 
                 .mode-btn {
-                    background: #111;
+                    background: #0a0a0a;
                     border: 1px solid #333;
-                    color: #888;
-                    padding: 10px 18px;
+                    color: #777;
+                    padding: 8px 14px;
                     font-family: 'Orbitron', sans-serif;
-                    font-size: 0.85rem;
+                    font-size: 0.75rem;
                     cursor: pointer;
                     transition: all 0.3s ease;
                 }
@@ -356,161 +388,152 @@ export default function Gallery() {
                     background: var(--gold);
                     color: black;
                     border-color: var(--gold);
-                    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+                    box-shadow: 0 0 20px rgba(212, 168, 75, 0.5);
                     font-weight: bold;
                 }
 
                 /* Timeline Gallery */
                 .timeline-container {
-                    max-width: 1100px;
+                    max-width: 1000px;
                     margin: 0 auto;
-                    padding: 40px 20px 100px;
+                    padding: 20px 20px 80px;
                     position: relative;
-                    min-height: 500px;
+                    min-height: 400px;
                 }
 
                 .timeline-track {
                     position: relative;
-                    padding-top: 20px;
+                    padding-top: 30px;
+                }
+
+                /* Main vertical timeline line */
+                .main-timeline-line {
+                    position: absolute;
+                    left: 50%;
+                    top: 0;
+                    bottom: 0;
+                    width: 3px;
+                    background: linear-gradient(180deg, var(--gold) 0%, var(--orange) 50%, var(--gold) 100%);
+                    transform: translateX(-50%);
+                    box-shadow: 0 0 15px rgba(212, 168, 75, 0.4);
+                    z-index: 1;
                 }
 
                 /* Photo Node */
                 .photo-node {
                     position: relative;
-                    margin-bottom: 100px;
+                    margin-bottom: 80px;
                     display: flex;
-                    align-items: flex-start;
-                    opacity: 0;
-                    transform: translateY(50px);
-                    transition: opacity 0.8s ease, transform 0.8s ease;
-                }
-
-                .photo-node.visible {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-
-                .photo-node.new-photo {
-                    animation: popIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                    align-items: center;
+                    min-height: 300px;
                 }
 
                 .photo-node.left {
                     justify-content: flex-start;
-                    padding-left: calc(50% + 30px);
+                    padding-right: calc(50% + 20px);
                 }
 
                 .photo-node.right {
                     justify-content: flex-end;
-                    padding-right: calc(50% + 30px);
+                    padding-left: calc(50% + 20px);
                 }
 
-                /* Animated Line Segment */
-                .line-segment {
+                /* Branch line SVG */
+                .branch-line {
                     position: absolute;
                     left: 50%;
-                    top: -100px;
-                    width: 4px;
-                    height: 200px;
-                    transform: translateX(-50%);
-                    background: rgba(50, 50, 50, 0.5);
-                    overflow: hidden;
-                }
-
-                .photo-node:first-child .line-segment {
-                    top: 0;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 200px;
                     height: 100px;
+                    z-index: 2;
+                    pointer-events: none;
                 }
 
-                .line-fill {
+                .photo-node.left .branch-line {
+                    left: calc(50% - 100px);
+                }
+
+                .photo-node.right .branch-line {
+                    left: calc(50% + 100px);
+                }
+
+                .branch-svg {
                     width: 100%;
-                    height: 0%;
-                    background: linear-gradient(180deg, var(--gold) 0%, var(--orange) 100%);
-                    transition: height 1s ease-out 0.3s;
-                    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-                }
-
-                .photo-node.visible .line-fill {
                     height: 100%;
-                }
-
-                /* Curve Connector */
-                .curve-connector {
-                    position: absolute;
-                    top: 50px;
-                    width: 120px;
-                    height: 60px;
                     overflow: visible;
                 }
 
-                .photo-node.left .curve-connector {
-                    left: calc(50% - 60px);
-                }
-
-                .photo-node.right .curve-connector {
-                    right: calc(50% - 60px);
-                    transform: scaleX(-1);
-                }
-
-                .curve-path {
+                .branch-path {
                     fill: none;
-                    stroke: rgba(50, 50, 50, 0.5);
+                    stroke: #333;
                     stroke-width: 3;
-                    stroke-dasharray: 150;
-                    stroke-dashoffset: 150;
-                    transition: stroke-dashoffset 0.8s ease-out 0.5s, stroke 0.5s ease;
+                    stroke-dasharray: 400;
+                    stroke-dashoffset: 400;
+                    transition: stroke-dashoffset 1s ease-out, stroke 0.5s ease;
                 }
 
-                .photo-node.visible .curve-path {
+                .photo-node.visible .branch-path {
                     stroke-dashoffset: 0;
                     stroke: var(--gold);
-                    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+                    filter: drop-shadow(0 0 8px rgba(212, 168, 75, 0.6));
                 }
 
                 /* Timeline Dot */
                 .timeline-dot {
                     position: absolute;
                     left: 50%;
-                    top: 50px;
-                    width: 18px;
-                    height: 18px;
+                    top: 50%;
+                    width: 16px;
+                    height: 16px;
                     background: var(--bg-dark);
-                    border: 3px solid #333;
+                    border: 3px solid #444;
                     border-radius: 50%;
                     transform: translate(-50%, -50%) scale(0);
                     z-index: 5;
-                    transition: transform 0.4s ease 0.6s, border-color 0.3s ease, box-shadow 0.3s ease;
+                    transition: transform 0.4s ease 0.3s, border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
                 }
 
                 .photo-node.visible .timeline-dot {
                     transform: translate(-50%, -50%) scale(1);
                     border-color: var(--gold);
                     background: var(--gold);
-                    box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+                    box-shadow: 0 0 20px rgba(212, 168, 75, 0.7);
                 }
 
                 /* Polaroid Card */
                 .polaroid-card {
-                    background: #f5f5f0;
-                    padding: 12px 12px 15px 12px;
+                    background: #f0ede5;
+                    padding: 10px 10px 12px 10px;
                     box-shadow: 
-                        0 8px 30px rgba(0, 0, 0, 0.6),
+                        0 10px 40px rgba(0, 0, 0, 0.7),
                         0 0 0 1px rgba(255, 255, 255, 0.05);
                     position: relative;
-                    max-width: 300px;
+                    max-width: 280px;
                     transform: rotate(-3deg);
-                    transition: transform 0.4s ease, box-shadow 0.4s ease;
+                    opacity: 0;
+                    transition: transform 0.5s ease, box-shadow 0.4s ease, opacity 0.6s ease;
+                    z-index: 3;
                 }
 
                 .photo-node.right .polaroid-card {
                     transform: rotate(3deg);
                 }
 
+                .photo-node.visible .polaroid-card {
+                    opacity: 1;
+                }
+
+                .photo-node.new-photo .polaroid-card {
+                    animation: popIn 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                }
+
                 .polaroid-card:hover {
-                    transform: rotate(0deg) scale(1.05);
+                    transform: rotate(0deg) scale(1.08);
                     box-shadow: 
-                        0 15px 50px rgba(0, 0, 0, 0.7),
-                        0 0 30px rgba(255, 215, 0, 0.3);
-                    z-index: 10;
+                        0 20px 60px rgba(0, 0, 0, 0.8),
+                        0 0 40px rgba(212, 168, 75, 0.3);
+                    z-index: 20;
                 }
 
                 .pin {
@@ -518,22 +541,22 @@ export default function Gallery() {
                     top: -10px;
                     left: 50%;
                     transform: translateX(-50%);
-                    width: 22px;
-                    height: 22px;
+                    width: 20px;
+                    height: 20px;
                     background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
                     border-radius: 50%;
-                    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
                     z-index: 10;
                 }
 
                 .pin::after {
                     content: '';
                     position: absolute;
-                    top: 5px;
-                    left: 5px;
-                    width: 6px;
-                    height: 6px;
-                    background: rgba(255, 255, 255, 0.7);
+                    top: 4px;
+                    left: 4px;
+                    width: 5px;
+                    height: 5px;
+                    background: rgba(255, 255, 255, 0.8);
                     border-radius: 50%;
                 }
 
@@ -541,7 +564,7 @@ export default function Gallery() {
                     background: #000;
                     aspect-ratio: 1;
                     overflow: hidden;
-                    margin-bottom: 12px;
+                    margin-bottom: 10px;
                 }
 
                 .photo-frame img {
@@ -560,8 +583,8 @@ export default function Gallery() {
                 .photo-info {
                     font-family: 'Share Tech Mono', monospace;
                     color: #333;
-                    font-size: 0.75rem;
-                    margin-bottom: 8px;
+                    font-size: 0.7rem;
+                    margin-bottom: 6px;
                 }
 
                 .rec-date, .location {
@@ -572,8 +595,9 @@ export default function Gallery() {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    font-size: 0.7rem;
-                    color: #666;
+                    font-size: 0.65rem;
+                    color: #555;
+                    margin-bottom: 8px;
                 }
 
                 .photo-id {
@@ -585,32 +609,50 @@ export default function Gallery() {
                     letter-spacing: 1px;
                 }
 
-                /* Loading */
-                .loading-spinner {
+                .download-btn {
+                    width: 100%;
+                    background: #222;
+                    color: #ccc;
+                    border: none;
+                    padding: 8px;
+                    font-family: 'Share Tech Mono', monospace;
+                    font-size: 0.7rem;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    letter-spacing: 1px;
+                }
+
+                .download-btn:hover {
+                    background: var(--gold);
+                    color: #000;
+                }
+
+                /* Loading & Empty */
+                .loading-spinner, .empty-state {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 100px;
+                    padding: 80px;
                     color: var(--text-dim);
                 }
 
                 .spinner {
-                    width: 50px;
-                    height: 50px;
+                    width: 45px;
+                    height: 45px;
                     border: 3px solid var(--border);
                     border-top-color: var(--gold);
                     border-radius: 50%;
                     animation: spin 1s linear infinite;
-                    margin-bottom: 20px;
+                    margin-bottom: 15px;
                 }
 
                 /* Footer */
                 .main-footer {
                     text-align: center;
-                    padding: 40px;
+                    padding: 30px;
                     color: var(--text-dim);
-                    font-size: 0.7rem;
+                    font-size: 0.65rem;
                     border-top: 1px solid var(--border);
                 }
 
@@ -618,14 +660,14 @@ export default function Gallery() {
                 @keyframes popIn {
                     0% {
                         opacity: 0;
-                        transform: scale(0.5) translateY(50px);
+                        transform: scale(0.3) rotate(-10deg);
                     }
-                    70% {
-                        transform: scale(1.1) translateY(0);
+                    60% {
+                        transform: scale(1.1) rotate(2deg);
                     }
                     100% {
                         opacity: 1;
-                        transform: scale(1) translateY(0);
+                        transform: scale(1) rotate(-3deg);
                     }
                 }
 
@@ -636,37 +678,47 @@ export default function Gallery() {
                 /* Responsive */
                 @media (max-width: 768px) {
                     .mascot-title {
-                        font-size: 2.5rem;
-                        letter-spacing: 8px;
+                        font-size: 2rem;
+                        letter-spacing: 5px;
                     }
 
                     .photo-node.left,
                     .photo-node.right {
-                        padding-left: 60px;
-                        padding-right: 20px;
+                        padding-left: 55px;
+                        padding-right: 15px;
                         justify-content: flex-start;
                     }
 
-                    .line-segment {
-                        left: 30px;
+                    .main-timeline-line {
+                        left: 25px;
                     }
 
                     .timeline-dot {
-                        left: 30px;
+                        left: 25px;
                     }
 
-                    .curve-connector {
+                    .branch-line {
                         display: none;
                     }
 
                     .polaroid-card,
                     .photo-node.right .polaroid-card {
                         transform: rotate(-2deg);
-                        max-width: 260px;
+                        max-width: 240px;
+                    }
+
+                    .polaroid-card:hover {
+                        transform: rotate(0deg) scale(1.05);
                     }
 
                     .controls-panel {
-                        margin: 0 15px 40px;
+                        margin: 0 10px 30px;
+                        padding: 15px;
+                    }
+
+                    .filter-btn, .mode-btn {
+                        padding: 6px 12px;
+                        font-size: 0.7rem;
                     }
                 }
             `}</style>

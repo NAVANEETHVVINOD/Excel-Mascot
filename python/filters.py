@@ -19,6 +19,7 @@ class FilterType(Enum):
     DREAMY = "dreamy"      # Soft blur, pastel tones
     RETRO = "retro"        # Polaroid border with timestamp
     NOIR = "noir"          # High contrast black and white
+    BW = "bw"              # Simple black and white (grayscale)
 
 
 def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "EXCEL 2025") -> np.ndarray:
@@ -45,6 +46,8 @@ def apply_filter(image: np.ndarray, filter_type: FilterType, text: str = "EXCEL 
         return apply_retro(image, text)
     elif filter_type == FilterType.NOIR:
         return apply_noir(image)
+    elif filter_type == FilterType.BW:
+        return apply_bw(image)
     else:
         return image.copy()
 
@@ -209,6 +212,24 @@ def apply_noir(image: np.ndarray) -> np.ndarray:
     return noir
 
 
+def apply_bw(image: np.ndarray) -> np.ndarray:
+    """
+    Apply simple black and white (grayscale) effect.
+    
+    Args:
+        image: BGR image as numpy array
+        
+    Returns:
+        Grayscale image in BGR format
+    """
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Convert back to BGR so all channels are equal
+    bw = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    return bw
+
+
 def get_filter_from_string(filter_name: str) -> FilterType:
     """
     Convert string filter name to FilterType enum.
@@ -226,6 +247,7 @@ def get_filter_from_string(filter_name: str) -> FilterType:
     
     mapping = {
         "NONE": FilterType.NONE,
+        "NORMAL": FilterType.NONE,  # Alias for NONE
         "GLITCH": FilterType.GLITCH,
         "NEON": FilterType.NEON,
         "CYBERPUNK": FilterType.NEON,  # Alias
@@ -234,7 +256,8 @@ def get_filter_from_string(filter_name: str) -> FilterType:
         "RETRO": FilterType.RETRO,
         "POLAROID": FilterType.RETRO,  # Alias
         "NOIR": FilterType.NOIR,
-        "BW": FilterType.NOIR,         # Alias
+        "BW": FilterType.BW,           # Simple B&W
+        "B&W": FilterType.BW,          # Alias
     }
     
     return mapping.get(name_upper, FilterType.NONE)
