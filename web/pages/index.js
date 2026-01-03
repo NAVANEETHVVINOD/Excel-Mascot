@@ -8,7 +8,7 @@ export default function Gallery() {
     const [activeMode, setActiveMode] = useState('SINGLE');
     const [activeFilter, setActiveFilter] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [visiblePhotos, setVisiblePhotos] = useState(new Set());
+    const [visiblePhotos, setVisiblePhotos] = useState({});
     const photoRefs = useRef({});
 
     useEffect(() => {
@@ -20,7 +20,7 @@ export default function Gallery() {
                 setPhotos(prev => [{ ...payload.new, isNew: true }, ...prev]);
                 setTimeout(() => {
                     setPhotos(prev => prev.map(p => p.id === payload.new.id ? { ...p, isNew: false } : p));
-                }, 1500);
+                }, 2000);
             })
             .subscribe();
 
@@ -35,17 +35,18 @@ export default function Gallery() {
         };
     }, []);
 
+    // Intersection Observer for fade-in animation
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach(entry => {
                     const id = entry.target.dataset.id;
                     if (entry.isIntersecting) {
-                        setVisiblePhotos(prev => new Set([...prev, id]));
+                        setVisiblePhotos(prev => ({ ...prev, [id]: true }));
                     }
                 });
             },
-            { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+            { threshold: 0.1, rootMargin: '50px' }
         );
 
         Object.values(photoRefs.current).forEach(ref => {
@@ -100,7 +101,7 @@ export default function Gallery() {
 
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
-        return date.getFullYear();
+        return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
     };
 
     const downloadPhoto = async (url, filename) => {
@@ -110,7 +111,7 @@ export default function Gallery() {
             const blobUrl = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = blobUrl;
-            link.download = filename || 'mascot_photo.jpg';
+            link.download = filename || 'excel_mascot_photo.jpg';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -123,102 +124,155 @@ export default function Gallery() {
     return (
         <div className="page-container">
             <Head>
-                <title>MASCOT - Excel Techfest 2025</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+                <title>EXCEL MASCOT - Techfest 2025</title>
+                <meta name="description" content="Excel Techfest 2025 Mascot Photo Booth Gallery" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+                <meta name="theme-color" content="#FFB800" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <link rel="manifest" href="/manifest.json" />
+                <link rel="icon" type="image/webp" href="/logo.webp" />
+                <link rel="apple-touch-icon" href="/logo.webp" />
             </Head>
 
-            {/* Background */}
-            <div className="bg-pattern"></div>
+            {/* ===== ANIMATED BACKGROUND ===== */}
+            <div className="bg-container">
+                <div className="orb orb-1"></div>
+                <div className="orb orb-2"></div>
+                <div className="orb orb-3"></div>
+                <div className="grain-overlay"></div>
+                <div className="grid-overlay"></div>
+            </div>
 
-            {/* Header */}
-            <header className="mascot-header">
-                <h1 className="mascot-title">VISUAL LOGS</h1>
-                <p className="mascot-subtitle">EXCEL TECHFEST 2025 // MASCOT_BOOTH</p>
+            {/* ===== EXCEL LOGO - TOP RIGHT ===== */}
+            <img src="/logo.webp" alt="Excel Logo" className="corner-logo" />
+
+            {/* ===== HEADER ===== */}
+            <header className="main-header">
+                <h1 className="main-title">EXCEL 2025</h1>
+                <p className="main-subtitle">Mascot Photo Booth // Gallery</p>
+                <div className="header-divider">
+                    <span className="divider-line left"></span>
+                    <svg className="sparkle" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+                    </svg>
+                    <span className="divider-line right"></span>
+                </div>
             </header>
 
-            {/* Controls Panel */}
-            <section className="controls-panel">
-                <div className="panel-section">
-                    <div className="panel-label">/// FILTERS_MODULE</div>
-                    <div className="filter-buttons">
-                        <button className={`filter-btn ${activeFilter === 'GLITCH' ? 'active' : ''}`} onClick={() => setFilter('GLITCH')}>GLITCH</button>
-                        <button className={`filter-btn ${activeFilter === 'NEON' ? 'active' : ''}`} onClick={() => setFilter('NEON')}>NEON</button>
-                        <button className={`filter-btn ${activeFilter === 'DREAMY' ? 'active' : ''}`} onClick={() => setFilter('DREAMY')}>DREAMY</button>
-                        <button className={`filter-btn ${activeFilter === 'RETRO' ? 'active' : ''}`} onClick={() => setFilter('RETRO')}>RETRO</button>
-                        <button className={`filter-btn ${activeFilter === 'NOIR' ? 'active' : ''}`} onClick={() => setFilter('NOIR')}>NOIR</button>
-                        <button className={`filter-btn ${activeFilter === 'BW' ? 'active' : ''}`} onClick={() => setFilter('BW')}>B&W</button>
+            {/* ===== CONTROL PANEL ===== */}
+            <section className="controls-section">
+                <div className="controls-panel">
+                    <div className="panel-row">
+                        <div className="panel-header">
+                            <svg className="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                            </svg>
+                            <span className="panel-label">/// FILTERS</span>
+                        </div>
+                        <div className="btn-group">
+                            {['GLITCH', 'NEON', 'DREAMY', 'RETRO', 'NOIR', 'B&W'].map(f => (
+                                <button
+                                    key={f}
+                                    className={`ctrl-btn ${activeFilter === f ? 'active' : ''}`}
+                                    onClick={() => setFilter(f)}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
-                <div className="panel-section">
-                    <div className="panel-label">/// CAPTURE_MODE</div>
-                    <div className="mode-buttons">
-                        <button className={`mode-btn ${activeMode === 'BURST' ? 'active' : ''}`} onClick={() => setMode('BURST')}>[ BURST ]</button>
-                        <button className={`mode-btn ${activeMode === 'GIF' ? 'active' : ''}`} onClick={() => setMode('GIF')}>[ GIF ]</button>
-                        <button className={`mode-btn ${activeMode === 'SINGLE' ? 'active' : ''}`} onClick={() => setMode('SINGLE')}>[ SINGLE ]</button>
+                    <div className="panel-row">
+                        <div className="panel-header">
+                            <svg className="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                <circle cx="12" cy="13" r="4" />
+                            </svg>
+                            <span className="panel-label">/// MODE</span>
+                        </div>
+                        <div className="btn-group mode-group">
+                            {['SINGLE', 'BURST', 'GIF'].map(m => (
+                                <button
+                                    key={m}
+                                    className={`ctrl-btn mode-btn ${activeMode === m ? 'active' : ''}`}
+                                    onClick={() => setMode(m)}
+                                >
+                                    {m}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Timeline Gallery */}
-            <main className="timeline-container">
+            {/* ===== PHOTO GALLERY ===== */}
+            <main className="gallery-section">
+                <h2 className="section-title">CAPTURED MOMENTS</h2>
+                <p className="photo-count">{photos.length} photos</p>
+
                 {loading ? (
-                    <div className="loading-spinner">
-                        <div className="spinner"></div>
+                    <div className="loading-state">
+                        <div className="loader"></div>
                         <p>Loading memories...</p>
                     </div>
                 ) : photos.length === 0 ? (
                     <div className="empty-state">
-                        <p>No photos yet. Show a thumbs up to capture!</p>
+                        <svg className="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        <p>No photos yet</p>
+                        <span>Show a thumbs up to capture!</span>
                     </div>
                 ) : (
-                    <div className="timeline-track">
-                        {/* Main vertical line */}
-                        <div className="main-line"></div>
-                        
+                    <div className="photo-grid">
                         {photos.map((photo, index) => {
-                            const isLeft = index % 2 === 0;
+                            const isVisible = visiblePhotos[photo.id];
+
                             return (
-                                <div 
-                                    key={photo.id} 
-                                    className={`photo-node ${visiblePhotos.has(photo.id.toString()) ? 'visible' : ''} ${photo.isNew ? 'new-photo' : ''} ${isLeft ? 'left' : 'right'}`}
+                                <div
+                                    key={photo.id}
+                                    className={`photo-card ${isVisible ? 'visible' : ''} ${photo.isNew ? 'new' : ''}`}
                                     ref={el => photoRefs.current[photo.id] = el}
                                     data-id={photo.id}
+                                    style={{
+                                        animationDelay: `${(index % 6) * 0.1}s`,
+                                        transform: `rotate(${(index % 2 === 0 ? -2 : 2) + (index % 3)}deg)`
+                                    }}
                                 >
-                                    {/* Branch connector - curves from center line to photo top */}
-                                    <svg className="branch-connector" viewBox="0 0 200 120" preserveAspectRatio="none">
-                                        <path 
-                                            className="branch-path" 
-                                            d={isLeft 
-                                                ? "M200,60 C150,60 150,10 100,10 L0,10" 
-                                                : "M0,60 C50,60 50,10 100,10 L200,10"
-                                            } 
+                                    {/* Tape */}
+                                    <div className="tape"></div>
+
+                                    {/* Photo Frame */}
+                                    <div className="photo-frame">
+                                        <img
+                                            src={photo.image_url}
+                                            alt={`Photo ${index + 1}`}
+                                            loading="lazy"
                                         />
-                                        <circle className="branch-dot-center" cx={isLeft ? "200" : "0"} cy="60" r="6" />
-                                        <circle className="branch-dot-end" cx={isLeft ? "0" : "200"} cy="10" r="4" />
-                                    </svg>
-                                    
-                                    {/* Polaroid card */}
-                                    <div className="polaroid-card">
-                                        <div className="tape"></div>
-                                        <div className="photo-frame">
-                                            <img src={photo.image_url} alt="Memory" loading="lazy" />
+                                        <div className="photo-overlay">
+                                            <button
+                                                className="download-btn"
+                                                onClick={() => downloadPhoto(photo.image_url, `excel_${photo.id}.jpg`)}
+                                                aria-label="Download"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                    <polyline points="7 10 12 15 17 10" />
+                                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                                </svg>
+                                            </button>
                                         </div>
-                                        <div className="photo-info">
-                                            <p className="rec-date">REC_DATE: {formatDate(photo.created_at)}</p>
-                                            <p className="location">LOC: College Ground</p>
-                                        </div>
-                                        <div className="photo-footer">
-                                            <span className="photo-id">EXCEL_LOG_{String(index + 1).padStart(2, '0')}</span>
-                                            <span className="excel-badge">[EXCELETED]</span>
-                                        </div>
-                                        <button 
-                                            className="download-btn"
-                                            onClick={() => downloadPhoto(photo.image_url, `excel_photo_${photo.id}.jpg`)}
-                                        >
-                                            ↓ DOWNLOAD
-                                        </button>
                                     </div>
+
+                                    {/* Polaroid Caption Area */}
+                                    <div className="polaroid-caption">
+                                        <span className="log-id">EXCEL_LOG_{String(index + 1).padStart(2, '0')}</span>
+                                        <span className="photo-date">{formatDate(photo.created_at)}</span>
+                                    </div>
+
+                                    {/* EXCELETED Stamp */}
+                                    <div className="stamp">EXCELETED</div>
                                 </div>
                             );
                         })}
@@ -226,32 +280,45 @@ export default function Gallery() {
                 )}
             </main>
 
-            {/* Footer */}
+            {/* ===== FOOTER ===== */}
             <footer className="main-footer">
-                <p>EXCEL TECHFEST 2025 // MASCOT_BOOTH_V2.1</p>
+                <div className="footer-border"></div>
+                <p className="footer-title">EXCEL TECHFEST 2025</p>
+                <p className="footer-sub">Model Engineering College, Thrikkakara</p>
             </footer>
 
             <style jsx global>{`
+                /* ========== CSS VARIABLES ========== */
                 :root {
-                    --bg-dark: #0a0a0a;
-                    --bg-darker: #050505;
-                    --gold: #D4A84B;
-                    --gold-bright: #F5C842;
-                    --orange: #E8943A;
-                    --cream: #f5f0e6;
-                    --text: #e0e0e0;
-                    --text-dim: #666;
-                    --border: #2a2a2a;
+                    --gold: #FFB800;
+                    --orange: #FF6B00;
+                    --amber: #FFAD33;
+                    --black: #000000;
+                    --charcoal: #0a0a0a;
+                    --dark-gray: #1a1a1a;
+                    --gray: #333333;
+                    --muted: #666666;
+                    --cream: #f5f5f0;
                 }
 
-                * { box-sizing: border-box; margin: 0; padding: 0; }
+                /* ========== BASE RESET ========== */
+                * {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                }
+
+                html {
+                    scroll-behavior: smooth;
+                }
 
                 body {
-                    background: var(--bg-darker);
-                    color: var(--text);
+                    background: var(--black);
+                    color: #fff;
                     font-family: 'Share Tech Mono', monospace;
                     min-height: 100vh;
                     overflow-x: hidden;
+                    -webkit-font-smoothing: antialiased;
                 }
 
                 .page-container {
@@ -259,477 +326,681 @@ export default function Gallery() {
                     min-height: 100vh;
                 }
 
-                /* Vintage photobooth background pattern */
-                .bg-pattern {
+                /* ========== ANIMATED BACKGROUND ========== */
+                .bg-container {
                     position: fixed;
-                    top: 0; left: 0;
-                    width: 100%; height: 100%;
-                    background: 
-                        radial-gradient(ellipse at 20% 20%, rgba(212, 168, 75, 0.08) 0%, transparent 40%),
-                        radial-gradient(ellipse at 80% 80%, rgba(232, 148, 58, 0.06) 0%, transparent 40%),
-                        radial-gradient(ellipse at 50% 50%, rgba(20, 20, 20, 1) 0%, rgba(5, 5, 5, 1) 100%);
-                    z-index: -2;
+                    inset: 0;
+                    z-index: 0;
+                    pointer-events: none;
+                    overflow: hidden;
                 }
 
-                .bg-pattern::before {
-                    content: '';
+                .orb {
                     position: absolute;
-                    top: 0; left: 0;
-                    width: 100%; height: 100%;
+                    border-radius: 50%;
+                    mix-blend-mode: screen;
+                    filter: blur(80px);
+                    animation: orbPulse 8s ease-in-out infinite;
+                }
+
+                .orb-1 {
+                    top: -10%;
+                    left: 20%;
+                    width: 500px;
+                    height: 500px;
+                    background: radial-gradient(circle, rgba(255, 107, 0, 0.4) 0%, transparent 70%);
+                }
+
+                .orb-2 {
+                    top: 30%;
+                    right: 10%;
+                    width: 400px;
+                    height: 400px;
+                    background: radial-gradient(circle, rgba(255, 184, 0, 0.35) 0%, transparent 70%);
+                    animation-delay: 2s;
+                }
+
+                .orb-3 {
+                    bottom: -5%;
+                    left: 40%;
+                    width: 450px;
+                    height: 450px;
+                    background: radial-gradient(circle, rgba(255, 140, 0, 0.3) 0%, transparent 70%);
+                    animation-delay: 4s;
+                }
+
+                @keyframes orbPulse {
+                    0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.6; }
+                    25% { transform: scale(1.1) translate(20px, -10px); opacity: 0.8; }
+                    50% { transform: scale(0.95) translate(-10px, 20px); opacity: 0.5; }
+                    75% { transform: scale(1.05) translate(-20px, -15px); opacity: 0.7; }
+                }
+
+                .grain-overlay {
+                    position: absolute;
+                    inset: 0;
+                    opacity: 0.4;
+                    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+                    background-repeat: repeat;
+                    background-size: 100px 100px;
+                }
+
+                .grid-overlay {
+                    position: absolute;
+                    inset: 0;
+                    opacity: 0.06;
                     background-image: 
-                        repeating-linear-gradient(
-                            0deg,
-                            transparent,
-                            transparent 2px,
-                            rgba(255, 255, 255, 0.01) 2px,
-                            rgba(255, 255, 255, 0.01) 4px
-                        );
-                    pointer-events: none;
+                        linear-gradient(rgba(255, 184, 0, 0.3) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 184, 0, 0.3) 1px, transparent 1px);
+                    background-size: 60px 60px;
                 }
 
-                .bg-pattern::after {
-                    content: '';
-                    position: absolute;
-                    top: 0; left: 0;
-                    width: 100%; height: 100%;
-                    background: 
-                        radial-gradient(circle at 50% 0%, rgba(212, 168, 75, 0.1) 0%, transparent 30%);
-                    pointer-events: none;
+                /* ========== CORNER LOGO ========== */
+                .corner-logo {
+                    position: fixed;
+                    top: 16px;
+                    right: 16px;
+                    width: 70px;
+                    height: 70px;
+                    object-fit: contain;
+                    z-index: 100;
+                    filter: drop-shadow(0 0 15px rgba(255, 184, 0, 0.6));
+                    transition: transform 0.3s ease, filter 0.3s ease;
                 }
 
-                /* Header */
-                .mascot-header {
+                .corner-logo:hover {
+                    transform: scale(1.1);
+                    filter: drop-shadow(0 0 25px rgba(255, 184, 0, 0.8));
+                }
+
+                /* ========== HEADER ========== */
+                .main-header {
+                    position: relative;
+                    z-index: 10;
                     text-align: center;
                     padding: 50px 20px 30px;
-                    position: relative;
                 }
 
-                .mascot-title {
+                .main-title {
                     font-family: 'Orbitron', sans-serif;
-                    font-size: 2.8rem;
-                    font-weight: 700;
+                    font-size: clamp(2.2rem, 8vw, 4rem);
+                    font-weight: 900;
+                    letter-spacing: 2px;
+                    background: linear-gradient(135deg, var(--gold) 0%, var(--orange) 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    text-shadow: 0 0 50px rgba(255, 184, 0, 0.3);
+                }
+
+                .main-subtitle {
+                    color: var(--muted);
+                    font-size: 0.85rem;
+                    letter-spacing: 3px;
+                    text-transform: uppercase;
+                }
+
+                .header-divider {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 16px;
+                    margin-top: 20px;
+                }
+
+                .divider-line {
+                    width: 60px;
+                    height: 1px;
+                }
+
+                .divider-line.left {
+                    background: linear-gradient(to right, transparent, var(--gold));
+                }
+
+                .divider-line.right {
+                    background: linear-gradient(to left, transparent, var(--gold));
+                }
+
+                .sparkle {
+                    width: 14px;
+                    height: 14px;
                     color: var(--gold);
-                    letter-spacing: 8px;
-                    text-shadow: 
-                        0 0 40px rgba(212, 168, 75, 0.4),
-                        0 2px 0 rgba(0, 0, 0, 0.3);
-                    margin-bottom: 10px;
                 }
 
-                .mascot-subtitle {
-                    font-size: 0.75rem;
-                    color: var(--text-dim);
-                    letter-spacing: 4px;
+                /* ========== CONTROLS PANEL ========== */
+                .controls-section {
+                    position: relative;
+                    z-index: 10;
+                    padding: 0 16px;
+                    margin-bottom: 40px;
                 }
 
-                /* Controls Panel */
                 .controls-panel {
-                    max-width: 800px;
-                    margin: 0 auto 50px;
-                    padding: 20px 25px;
-                    background: rgba(15, 15, 15, 0.9);
-                    border: 1px solid var(--border);
-                    border-left: 3px solid var(--gold);
+                    max-width: 700px;
+                    margin: 0 auto;
+                    background: rgba(0, 0, 0, 0.5);
+                    backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 140, 0, 0.2);
+                    border-radius: 16px;
+                    padding: 20px;
                 }
 
-                .panel-section {
-                    margin-bottom: 15px;
+                .panel-row {
+                    margin-bottom: 16px;
                 }
 
-                .panel-section:last-child {
+                .panel-row:last-child {
                     margin-bottom: 0;
                 }
 
-                .panel-label {
-                    color: var(--text-dim);
-                    font-size: 0.65rem;
-                    margin-bottom: 10px;
-                    letter-spacing: 1px;
-                }
-
-                .filter-buttons, .mode-buttons {
+                .panel-header {
                     display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                    justify-content: center;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 10px;
                 }
 
-                .filter-btn {
-                    background: transparent;
-                    border: 1px solid var(--border);
-                    color: #888;
-                    padding: 8px 16px;
-                    font-family: 'Share Tech Mono', monospace;
-                    font-size: 0.75rem;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                }
-
-                .filter-btn:hover {
-                    border-color: var(--gold);
+                .panel-icon {
+                    width: 16px;
+                    height: 16px;
                     color: var(--gold);
                 }
 
-                .filter-btn.active {
-                    background: var(--gold);
-                    color: #000;
-                    border-color: var(--gold);
-                    box-shadow: 0 0 15px rgba(212, 168, 75, 0.4);
+                .panel-label {
+                    font-size: 0.7rem;
+                    color: var(--gold);
+                    letter-spacing: 2px;
                 }
 
-                .mode-btn {
-                    background: transparent;
-                    border: 1px solid var(--border);
-                    color: #666;
-                    padding: 8px 14px;
-                    font-family: 'Orbitron', sans-serif;
-                    font-size: 0.7rem;
+                .btn-group {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                }
+
+                .mode-group {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 8px;
+                }
+
+                .ctrl-btn {
+                    background: rgba(0, 0, 0, 0.6);
+                    border: 1px solid rgba(255, 140, 0, 0.3);
+                    color: var(--gold);
+                    padding: 10px 14px;
+                    font-family: 'Share Tech Mono', monospace;
+                    font-size: 0.65rem;
+                    letter-spacing: 1.5px;
                     cursor: pointer;
                     transition: all 0.3s ease;
                 }
 
-                .mode-btn:hover {
-                    color: #fff;
-                    border-color: #fff;
+                .ctrl-btn:hover {
+                    border-color: var(--orange);
+                    background: rgba(255, 107, 0, 0.1);
                 }
 
-                .mode-btn.active {
-                    background: var(--gold);
-                    color: #000;
+                .ctrl-btn.active {
+                    background: linear-gradient(135deg, var(--orange), var(--gold));
                     border-color: var(--gold);
-                    box-shadow: 0 0 15px rgba(212, 168, 75, 0.4);
+                    color: #000;
+                    font-weight: 600;
+                    box-shadow: 0 0 20px rgba(255, 140, 0, 0.4);
                 }
 
-                /* Timeline */
-                .timeline-container {
-                    max-width: 1100px;
+                .mode-btn {
+                    font-family: 'Orbitron', sans-serif;
+                    font-weight: 500;
+                    text-align: center;
+                }
+
+                /* ========== GALLERY SECTION ========== */
+                .gallery-section {
+                    position: relative;
+                    z-index: 10;
+                    max-width: 1400px;
                     margin: 0 auto;
-                    padding: 0 20px 100px;
+                    padding: 0 16px 60px;
+                }
+
+                .section-title {
+                    font-family: 'Orbitron', sans-serif;
+                    font-size: clamp(1.5rem, 5vw, 2rem);
+                    font-weight: 700;
+                    text-align: center;
+                    margin-bottom: 8px;
+                    letter-spacing: 3px;
+                    background: linear-gradient(135deg, var(--gold) 0%, var(--orange) 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                }
+
+                .photo-count {
+                    text-align: center;
+                    color: var(--muted);
+                    font-size: 0.8rem;
+                    margin-bottom: 40px;
+                    letter-spacing: 2px;
+                }
+
+                /* ========== PHOTO GRID ========== */
+                .photo-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 40px;
+                    padding: 20px;
+                }
+
+                /* ========== POLAROID PHOTO CARD ========== */
+                .photo-card {
                     position: relative;
-                }
-
-                .timeline-track {
-                    position: relative;
-                    padding-top: 40px;
-                }
-
-                /* Main vertical line */
-                .main-line {
-                    position: absolute;
-                    left: 50%;
-                    top: 0;
-                    bottom: 0;
-                    width: 3px;
-                    background: linear-gradient(180deg, 
-                        var(--gold) 0%, 
-                        var(--orange) 30%,
-                        var(--gold) 60%,
-                        var(--orange) 100%
-                    );
-                    transform: translateX(-50%);
-                    box-shadow: 
-                        0 0 20px rgba(212, 168, 75, 0.5),
-                        0 0 40px rgba(212, 168, 75, 0.2);
-                    z-index: 1;
-                }
-
-                /* Photo Node */
-                .photo-node {
-                    position: relative;
-                    margin-bottom: 120px;
-                    display: flex;
-                    align-items: flex-start;
-                    padding-top: 40px;
-                }
-
-                .photo-node.left {
-                    justify-content: flex-start;
-                    padding-right: calc(50% + 30px);
-                }
-
-                .photo-node.right {
-                    justify-content: flex-end;
-                    padding-left: calc(50% + 30px);
-                }
-
-                /* Branch connector SVG */
-                .branch-connector {
-                    position: absolute;
-                    top: 0;
-                    width: 50%;
-                    height: 120px;
-                    z-index: 2;
-                    overflow: visible;
-                }
-
-                .photo-node.left .branch-connector {
-                    right: 0;
-                }
-
-                .photo-node.right .branch-connector {
-                    left: 0;
-                }
-
-                .branch-path {
-                    fill: none;
-                    stroke: #333;
-                    stroke-width: 3;
-                    stroke-linecap: round;
-                    stroke-dasharray: 300;
-                    stroke-dashoffset: 300;
-                    transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s ease;
-                }
-
-                .photo-node.visible .branch-path {
-                    stroke-dashoffset: 0;
-                    stroke: var(--gold);
-                    filter: drop-shadow(0 0 6px rgba(212, 168, 75, 0.6));
-                }
-
-                .branch-dot-center {
-                    fill: #222;
-                    stroke: #444;
-                    stroke-width: 2;
-                    transition: all 0.4s ease 0.8s;
-                }
-
-                .photo-node.visible .branch-dot-center {
-                    fill: var(--gold);
-                    stroke: var(--gold-bright);
-                    filter: drop-shadow(0 0 8px rgba(212, 168, 75, 0.8));
-                }
-
-                .branch-dot-end {
-                    fill: #222;
-                    stroke: #444;
-                    stroke-width: 2;
-                    opacity: 0;
-                    transition: all 0.3s ease 1s;
-                }
-
-                .photo-node.visible .branch-dot-end {
-                    opacity: 1;
-                    fill: var(--gold);
-                    stroke: var(--gold-bright);
-                }
-
-                /* Polaroid Card */
-                .polaroid-card {
-                    background: var(--cream);
-                    padding: 12px 12px 15px 12px;
-                    box-shadow: 
-                        0 8px 30px rgba(0, 0, 0, 0.5),
-                        0 2px 10px rgba(0, 0, 0, 0.3),
-                        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-                    position: relative;
-                    max-width: 260px;
-                    transform: rotate(-2deg);
+                    background: linear-gradient(145deg, #f8f6f0, #e8e4dc);
+                    padding: 14px 14px 50px 14px;
                     opacity: 0;
                     transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                    z-index: 3;
+                    box-shadow: 
+                        0 8px 25px rgba(0, 0, 0, 0.4),
+                        0 3px 8px rgba(0, 0, 0, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.5);
                 }
 
-                .photo-node.right .polaroid-card {
-                    transform: rotate(2deg);
-                }
-
-                .photo-node.visible .polaroid-card {
+                .photo-card.visible {
                     opacity: 1;
                 }
 
-                .photo-node.new-photo .polaroid-card {
-                    animation: slideIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-                }
-
-                .polaroid-card:hover {
-                    transform: rotate(0deg) scale(1.05) translateY(-5px);
+                .photo-card:hover {
+                    transform: scale(1.05) rotate(0deg) !important;
                     box-shadow: 
-                        0 20px 50px rgba(0, 0, 0, 0.6),
-                        0 0 30px rgba(212, 168, 75, 0.2);
-                    z-index: 20;
-                }
-
-                /* Tape decoration */
-                .tape {
-                    position: absolute;
-                    top: -12px;
-                    left: 50%;
-                    transform: translateX(-50%) rotate(-2deg);
-                    width: 60px;
-                    height: 24px;
-                    background: linear-gradient(135deg, 
-                        rgba(212, 168, 75, 0.9) 0%, 
-                        rgba(245, 200, 66, 0.8) 50%,
-                        rgba(212, 168, 75, 0.9) 100%
-                    );
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                        0 25px 60px rgba(0, 0, 0, 0.5),
+                        0 10px 20px rgba(0, 0, 0, 0.3),
+                        0 0 40px rgba(255, 140, 0, 0.15);
                     z-index: 10;
                 }
 
-                .tape::before {
-                    content: '';
+                .photo-card.new {
+                    animation: newCard 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+                }
+
+                @keyframes newCard {
+                    0% { opacity: 0; transform: scale(0.8) rotate(-10deg); }
+                    100% { opacity: 1; transform: scale(1); }
+                }
+
+                /* Tape */
+                .tape {
                     position: absolute;
-                    top: 0; left: 0;
-                    width: 100%; height: 100%;
-                    background: repeating-linear-gradient(
-                        90deg,
-                        transparent,
-                        transparent 3px,
-                        rgba(255, 255, 255, 0.1) 3px,
-                        rgba(255, 255, 255, 0.1) 6px
-                    );
+                    top: -14px;
+                    left: 50%;
+                    transform: translateX(-50%) rotate(2deg);
+                    width: 80px;
+                    height: 28px;
+                    background: linear-gradient(135deg, 
+                        rgba(255, 210, 120, 0.75), 
+                        rgba(255, 190, 100, 0.6));
+                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+                    z-index: 15;
                 }
 
                 .photo-frame {
-                    background: #111;
-                    aspect-ratio: 1;
+                    position: relative;
+                    aspect-ratio: 3/4;
                     overflow: hidden;
-                    margin-bottom: 10px;
-                    border: 1px solid #ddd;
+                    background: #111;
                 }
 
                 .photo-frame img {
                     width: 100%;
                     height: 100%;
                     object-fit: cover;
-                    display: block;
-                    filter: grayscale(100%) sepia(20%) contrast(1.1);
-                    transition: filter 0.5s ease;
+                    filter: grayscale(100%);
+                    transition: filter 0.5s ease, transform 0.5s ease;
                 }
 
-                .polaroid-card:hover .photo-frame img {
-                    filter: grayscale(0%) sepia(0%) contrast(1.05);
+                .photo-card:hover .photo-frame img {
+                    filter: grayscale(0%);
+                    transform: scale(1.03);
                 }
 
-                .photo-info {
-                    font-family: 'Share Tech Mono', monospace;
-                    color: #444;
-                    font-size: 0.65rem;
-                    margin-bottom: 6px;
-                }
-
-                .rec-date, .location {
-                    margin: 2px 0;
-                }
-
-                .photo-footer {
+                .photo-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
                     display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    font-size: 0.6rem;
-                    color: #666;
-                    margin-bottom: 8px;
+                    align-items: flex-end;
+                    justify-content: center;
+                    padding-bottom: 20px;
+                }
+
+                .photo-card:hover .photo-overlay {
+                    opacity: 1;
                 }
 
                 .download-btn {
-                    width: 100%;
-                    background: #333;
-                    color: #ccc;
+                    width: 48px;
+                    height: 48px;
+                    background: linear-gradient(135deg, var(--orange), var(--gold));
                     border: none;
-                    padding: 8px;
-                    font-family: 'Share Tech Mono', monospace;
-                    font-size: 0.65rem;
+                    border-radius: 50%;
+                    color: #000;
                     cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transform: translateY(20px);
                     transition: all 0.3s ease;
-                    letter-spacing: 1px;
+                    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.5);
+                }
+
+                .photo-card:hover .download-btn {
+                    transform: translateY(0);
                 }
 
                 .download-btn:hover {
-                    background: var(--gold);
-                    color: #000;
+                    transform: scale(1.15) translateY(0) !important;
+                    box-shadow: 0 8px 30px rgba(255, 140, 0, 0.7);
                 }
 
-                /* Loading & Empty */
-                .loading-spinner, .empty-state {
+                .download-btn svg {
+                    width: 22px;
+                    height: 22px;
+                }
+
+                /* Polaroid Caption */
+                .polaroid-caption {
+                    position: absolute;
+                    bottom: 10px;
+                    left: 14px;
+                    right: 14px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+
+                .log-id {
+                    font-size: 0.7rem;
+                    color: #444;
+                    letter-spacing: 1px;
+                }
+
+                .photo-date {
+                    font-size: 0.65rem;
+                    color: #777;
+                }
+
+                /* EXCELETED Stamp */
+                .stamp {
+                    position: absolute;
+                    top: 30px;
+                    right: -6px;
+                    background: linear-gradient(135deg, var(--orange), #cc5500);
+                    color: #fff;
+                    font-family: 'Orbitron', sans-serif;
+                    font-size: 0.55rem;
+                    font-weight: 700;
+                    padding: 5px 12px;
+                    transform: rotate(12deg);
+                    letter-spacing: 1.5px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                /* ========== LOADING & EMPTY STATES ========== */
+                .loading-state, .empty-state {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 100px 20px;
-                    color: var(--text-dim);
+                    padding: 80px 20px;
                     text-align: center;
                 }
 
-                .spinner {
-                    width: 40px;
-                    height: 40px;
-                    border: 2px solid var(--border);
+                .loader {
+                    width: 50px;
+                    height: 50px;
+                    border: 2px solid rgba(255, 140, 0, 0.2);
                     border-top-color: var(--gold);
                     border-radius: 50%;
                     animation: spin 1s linear infinite;
-                    margin-bottom: 15px;
-                }
-
-                /* Footer */
-                .main-footer {
-                    text-align: center;
-                    padding: 30px;
-                    color: #444;
-                    font-size: 0.6rem;
-                    letter-spacing: 2px;
-                    border-top: 1px solid var(--border);
-                }
-
-                /* Animations */
-                @keyframes slideIn {
-                    0% {
-                        opacity: 0;
-                        transform: translateY(-30px) rotate(-5deg) scale(0.9);
-                    }
-                    100% {
-                        opacity: 1;
-                        transform: translateY(0) rotate(-2deg) scale(1);
-                    }
+                    margin-bottom: 20px;
                 }
 
                 @keyframes spin {
                     to { transform: rotate(360deg); }
                 }
 
-                /* Responsive */
+                .loading-state p {
+                    color: var(--muted);
+                }
+
+                .empty-icon {
+                    width: 60px;
+                    height: 60px;
+                    color: #444;
+                    margin-bottom: 16px;
+                }
+
+                .empty-state p {
+                    color: var(--muted);
+                    margin-bottom: 8px;
+                }
+
+                .empty-state span {
+                    color: #555;
+                    font-size: 0.8rem;
+                }
+
+                /* ========== FOOTER ========== */
+                .main-footer {
+                    position: relative;
+                    z-index: 10;
+                    text-align: center;
+                    padding: 40px 20px;
+                }
+
+                .footer-border {
+                    height: 1px;
+                    max-width: 150px;
+                    margin: 0 auto 20px;
+                    background: linear-gradient(to right, transparent, rgba(255, 140, 0, 0.3), transparent);
+                }
+
+                .footer-title {
+                    font-family: 'Orbitron', sans-serif;
+                    font-size: 0.7rem;
+                    color: var(--gold);
+                    letter-spacing: 3px;
+                    margin-bottom: 6px;
+                }
+
+                .footer-sub {
+                    font-size: 0.65rem;
+                    color: #555;
+                }
+
+                /* ========== MOBILE RESPONSIVE ========== */
                 @media (max-width: 768px) {
-                    .mascot-title {
-                        font-size: 1.8rem;
-                        letter-spacing: 4px;
+                    .orb-1, .orb-2, .orb-3 {
+                        width: 200px;
+                        height: 200px;
                     }
 
-                    .photo-node.left,
-                    .photo-node.right {
-                        padding-left: 50px;
-                        padding-right: 15px;
-                        justify-content: flex-start;
+                    .corner-logo {
+                        width: 55px;
+                        height: 55px;
+                        top: 12px;
+                        right: 12px;
                     }
 
-                    .main-line {
-                        left: 20px;
+                    .main-header {
+                        padding: 35px 16px 20px;
                     }
 
-                    .branch-connector {
-                        display: none;
+                    .main-title {
+                        font-size: 2rem;
                     }
 
-                    .polaroid-card,
-                    .photo-node.right .polaroid-card {
-                        transform: rotate(-1deg);
-                        max-width: 220px;
+                    .main-subtitle {
+                        font-size: 0.65rem;
+                        letter-spacing: 2px;
                     }
 
-                    .polaroid-card:hover {
-                        transform: rotate(0deg) scale(1.03);
+                    .controls-section {
+                        margin-bottom: 30px;
                     }
 
                     .controls-panel {
-                        margin: 0 10px 40px;
-                        padding: 15px;
+                        padding: 14px;
                     }
 
-                    .filter-btn, .mode-btn {
-                        padding: 6px 10px;
-                        font-size: 0.65rem;
+                    .ctrl-btn {
+                        padding: 8px 10px;
+                        font-size: 0.55rem;
                     }
 
-                    .photo-node {
-                        margin-bottom: 80px;
+                    .section-title {
+                        font-size: 1.3rem;
+                        margin-bottom: 6px;
+                    }
+
+                    .photo-count {
+                        margin-bottom: 25px;
+                    }
+
+                    /* 2-column grid on tablet/mobile */
+                    .photo-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 20px;
+                        padding: 10px;
+                    }
+
+                    .photo-card {
+                        padding: 8px 8px 40px 8px;
+                    }
+
+                    .tape {
+                        width: 60px;
+                        height: 22px;
+                        top: -10px;
+                    }
+
+                    .polaroid-caption {
+                        bottom: 8px;
+                        left: 8px;
+                        right: 8px;
+                    }
+
+                    .log-id {
+                        font-size: 0.55rem;
+                    }
+
+                    .photo-date {
+                        font-size: 0.5rem;
+                    }
+
+                    .stamp {
+                        font-size: 0.45rem;
+                        padding: 3px 7px;
+                        top: 20px;
+                        right: -4px;
+                    }
+
+                    .download-btn {
+                        width: 36px;
+                        height: 36px;
+                    }
+
+                    .download-btn svg {
+                        width: 16px;
+                        height: 16px;
+                    }
+
+                    .footer-title {
+                        font-size: 0.6rem;
+                    }
+
+                    .footer-sub {
+                        font-size: 0.55rem;
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    .corner-logo {
+                        width: 45px;
+                        height: 45px;
+                        top: 10px;
+                        right: 10px;
+                    }
+
+                    .main-title {
+                        font-size: 1.8rem;
+                    }
+
+                    .btn-group {
+                        gap: 5px;
+                    }
+
+                    .ctrl-btn {
+                        padding: 7px 8px;
+                        font-size: 0.5rem;
+                        letter-spacing: 1px;
+                    }
+
+                    /* Keep 2 columns on small phones */
+                    .photo-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 14px;
+                        padding: 8px;
+                    }
+
+                    .photo-card {
+                        padding: 6px 6px 35px 6px;
+                    }
+
+                    .tape {
+                        width: 50px;
+                        height: 18px;
+                        top: -8px;
+                    }
+
+                    .polaroid-caption {
+                        bottom: 6px;
+                        left: 6px;
+                        right: 6px;
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 2px;
+                    }
+
+                    .log-id {
+                        font-size: 0.5rem;
+                    }
+
+                    .stamp {
+                        font-size: 0.4rem;
+                        padding: 2px 6px;
+                        top: 16px;
+                        right: -3px;
+                    }
+
+                    .download-btn {
+                        width: 32px;
+                        height: 32px;
+                    }
+
+                    .download-btn svg {
+                        width: 14px;
+                        height: 14px;
+                    }
+                }
+
+                /* PWA Standalone */
+                @media (display-mode: standalone) {
+                    .main-header {
+                        padding-top: 50px;
                     }
                 }
             `}</style>

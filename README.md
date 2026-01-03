@@ -1,111 +1,181 @@
-# Mascot Photo Booth System
+# 🎭 Excel Mascot Photo Booth
 
-A hybrid IoT Photo Booth that captures photos using a Python-controlled webcam, interacts with users via an animated Arduino Mascot, and instantly uploads photos to a Cloud Gallery.
+An interactive IoT Photo Booth for **Excel Techfest 2025** featuring gesture-controlled capture, animated Arduino mascot, and real-time cloud gallery.
 
-## 🚀 Project Overview
+![Excel Techfest 2025](https://img.shields.io/badge/Excel-Techfest%202025-gold)
+![Python](https://img.shields.io/badge/Python-3.9+-blue)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![Supabase](https://img.shields.io/badge/Supabase-Cloud-green)
 
-The **Mascot Photo Booth** is designed to provide an interactive and seamless photo-taking experience. It replaces the traditional "press a button" interface with a touchless, gesture-controlled AI system. The physical "Mascot" (Arduino-based) provides personality and feedback, while the cloud backend ensures photos are immediately available on a sleek web gallery.
+## 🌟 Features
 
-### Key Features
-*   **Touchless Control**: Snap photos using hand gestures (Thumps Up).
-*   **Interactive Mascot**: Animated eyes (NeoPixel) and hand (Servo) react to users.
-*   **Instant Cloud Sync**: Photos upload to Supabase and appear on the web gallery in < 2 seconds.
-*   **Resilient Connectivity**: Robust offline fallback and retry logic for unstable networks.
+- **Touchless Capture**: Show thumbs up 👍 to take photos
+- **Interactive Mascot**: LED eyes + servo arm react to gestures
+- **Multiple Modes**: Single, Burst (4-photo collage), GIF
+- **Photo Filters**: Glitch, Neon, Dreamy, Retro, Noir, B&W
+- **Real-time Gallery**: Photos appear instantly on web
+- **PWA Ready**: Install as mobile app
+- **Excel Theme**: Matches excelmec.org design
 
----
+## 🔗 Live Demo
 
-## 🧠 Current Model & Architecture
+- **Gallery**: [excel-mascot.vercel.app](https://excel-mascot.vercel.app/)
 
-The system operates on a 4-layer architecture, combining local edge processing with cloud scalability.
+## 🏗️ Architecture
 
-### 1. Hardware Layer (The Mascot)
-*   **Controller**: Arduino Uno
-*   **Components**: 
-    *   **NeoPixel Matrix**: Displays animated eyes (Blink, Heart, Angry).
-    *   **Servo Motor**: Physically waves to users.
-    *   **Ultrasonic Sensor**: Detects when a user approaches to wake up the system.
-*   **Communication**: Serial (USB) connection to the local PC.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SYSTEM ARCHITECTURE                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐     Serial      ┌──────────────────┐     │
+│  │   ARDUINO    │◄───(COM3)──────►│  Python Client   │     │
+│  │  Controller  │                 │  (camera_main)   │     │
+│  └──────────────┘                 └────────┬─────────┘     │
+│        │                                   │               │
+│        ▼                                   ▼               │
+│  ┌──────────────┐              ┌─────────────────────┐     │
+│  │ • LED Eyes   │              │     SUPABASE        │     │
+│  │ • Servo Arm  │              │  • Storage (photos) │     │
+│  │ • Stepper    │              │  • Database (urls)  │     │
+│  │ • Ultrasonic │              │  • Realtime (sync)  │     │
+│  └──────────────┘              └──────────┬──────────┘     │
+│                                           │               │
+│                                           ▼               │
+│                                ┌─────────────────────┐     │
+│                                │   VERCEL WEBSITE    │     │
+│                                │  (Next.js Gallery)  │     │
+│                                └─────────────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### 2. Edge Layer (Local Intelligence)
-*   **Language**: Python 3.9+
-*   **Computer Vision**: `OpenCV` for image capture and processing.
-*   **AI Model**: **MediaPipe Hands** (Google).
-    *   **Model Type**: Lightweight Single-Shot Detector (SSD) based implementation.
-    *   **Latency**: Real-time (~30 FPS on standard CPUs).
-    *   **Logic**:
-        *   **`THUMBS_UP`**: Triggers the countdown and photo capture.
-        *   **`LOVE` (Peace Sign)**: Triggers "Love" animation on the Mascot.
-        *   **`SUS` (Pointing)**: Triggers "Suspicious" animation.
-*   **Upload Service**: A dedicated background thread securely uploads images to Supabase using Anon Keys and RLS policies.
+## 📁 Project Structure
 
-### 3. Cloud Layer (Backend)
-*   **Provider**: **Supabase** (PostgreSQL + Storage).
-*   **Storage**: Public `photos` bucket for hosting images.
-*   **Database**: `photos` table stores metadata (timestamps, public URLs).
-*   **Security**: Row Level Security (RLS) ensures only authenticated apps can upload, while reads are public.
+```
+mascot_photobooth/
+├── arduino/
+│   └── mascot_controller/     # Arduino code for mascot
+├── python/
+│   ├── camera_main.py         # Main application
+│   ├── gestures.py            # Hand gesture detection
+│   ├── filters.py             # Photo filters
+│   ├── capture_modes.py       # Single/Burst/GIF modes
+│   ├── arduino_bridge.py      # Serial communication
+│   ├── supabase_upload.py     # Cloud upload
+│   └── remote_control.py      # Realtime commands
+├── web/
+│   ├── pages/index.js         # Gallery UI
+│   └── public/manifest.json   # PWA config
+└── photos/                    # Local photo storage
+```
 
-### 4. Frontend Layer (User Gallery)
-*   **Framework**: **Next.js** (React).
-*   **Hosting**: **Vercel**.
-*   **Real-time**: Uses Supabase Realtime to push new photos to connected clients instantly without refreshing.
+## 🔧 Hardware Setup
 
----
+### Arduino Pin Configuration
 
-## 🔮 Roadmap & Next Steps
+| Component | Pin |
+|-----------|-----|
+| Ultrasonic TRIG | 9 |
+| Ultrasonic ECHO | 10 |
+| Servo Signal | 11 |
+| LED Strip 1 (Left Eye) | 6 |
+| LED Strip 2 | 7 |
+| LED Strip 3 (Right Eye) | 8 |
+| Stepper STEP | 2 |
+| Stepper DIR | 3 |
+| Stepper ENA | 4 |
 
-We have successfully built the core capture-to-cloud pipeline. Here is the plan for the next phase of development.
+### Required Libraries (Arduino)
+- Adafruit NeoPixel
+- Servo
 
-### Immediate Next Steps
-1.  **AI Assistant Integration**:
-    *   **Goal**: Give the Mascot a voice.
-    *   **Tech**: Integrate a lightweight LLM (e.g., Gemini API or local Llama) to allow users to "talk" to the mascot.
-    *   **Interaction**: "Hey Mascot, take a picture of us!" -> Mascot replies and snaps photo.
-
-2.  **3D Web Experience**:
-    *   **Goal**: Make the web gallery visually stunning.
-    *   **Tech**: Three.js / React Three Fiber.
-    *   **Feature**: Transition from a 2D grid to a 3D environment where photos float in space or are held by a 3D avatar of the mascot.
-
-### Planned Features (Backlog)
-*   **QR Code Sharing**: Display a unique QR code on the capabilities screen after a photo is taken for instant download.
-*   **Filter Selection**: Use gestures (swipe left/right) to change camera filters (B&W, Sepia, Cartoon) before taking the shot.
-*   **Smart Framing**: Use Face Mesh to automatically crop/zoom the photo to perfectly center the users.
-
----
-
-## 🛠️ Setup Instructions
-
-### Prerequisites
-*   Python 3.9+
-*   Node.js 18+
-*   Arduino IDE
-*   Supabase Account
+## 🚀 Quick Start
 
 ### 1. Arduino Setup
-1.  Open `arduino/mascot_controller/mascot_controller.ino`.
-2.  Install libraries: **Adafruit NeoPixel**, **Servo**.
-3.  Upload code to Arduino Uno.
+```bash
+# Open Arduino IDE
+# Install libraries: Adafruit NeoPixel, Servo
+# Upload arduino/mascot_controller/mascot_controller.ino
+```
 
-### 2. Python Client Setup
-1.  Navigate to `python/`.
-2.  Install dependencies:
-    ```bash
-    pip install opencv-python mediapipe pyserial supabase
-    ```
-3.  Create `config.py` from `config_example.py` and add your Supabase URL/Key.
-4.  Run the main loop:
-    ```bash
-    python camera_main.py
-    ```
+### 2. Python Setup
+```bash
+cd python
+pip install -r requirements.txt
 
-### 3. Web Gallery Setup
-1.  Navigate to `web/`.
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Set up local environment variables in `.env.local` or hardcode in `supabaseClient.js` (for dev).
-4.  Run development server:
-    ```bash
-    npm run dev
-    ```
+# Create config.py from config_example.py
+# Add your Supabase credentials
+
+python camera_main.py
+```
+
+### 3. Web Gallery
+```bash
+cd web
+npm install
+npm run dev
+# Open http://localhost:3000
+```
+
+## 🎮 Controls
+
+### Camera Controls
+| Key | Action |
+|-----|--------|
+| Q | Quit application |
+| ESC | Toggle fullscreen |
+| M | Minimize window |
+
+### Gestures
+| Gesture | Action |
+|---------|--------|
+| 👍 Thumbs Up | Capture photo |
+| ✌️ Peace Sign | Love animation |
+| ☝️ Pointing | Suspicious animation |
+
+## 🎨 Web Gallery Features
+
+- **Timeline Design**: Photos displayed on animated timeline
+- **Polaroid Style**: Vintage photo cards with tape decoration
+- **B&W to Color**: Photos colorize on hover
+- **Download**: Save photos directly
+- **Real-time**: New photos appear instantly
+- **Mobile Friendly**: Responsive design
+- **PWA**: Installable as app
+
+## ⚙️ Configuration
+
+### Python (config.py)
+```python
+SUPABASE_URL = "your-supabase-url"
+SUPABASE_KEY = "your-anon-key"
+BUCKET_NAME = "photos"
+```
+
+### Environment Variables
+```bash
+ROBOFLOW_API_KEY=xxx      # Optional: AI detection
+ROBOFLOW_MODEL_ID=xxx     # Optional: AI detection
+```
+
+## 📱 PWA Installation
+
+1. Open [excel-mascot.vercel.app](https://excel-mascot.vercel.app/) on mobile
+2. Tap "Add to Home Screen"
+3. Access gallery like a native app
+
+## 🛠️ Tech Stack
+
+- **Hardware**: Arduino Uno, NeoPixel LEDs, Servo, Stepper Motor
+- **Backend**: Python 3.9+, OpenCV, MediaPipe
+- **Cloud**: Supabase (Storage + Database + Realtime)
+- **Frontend**: Next.js 16, React, Vercel
+- **Design**: Excel Techfest 2025 theme (Gold/Orange palette)
+
+## 📄 License
+
+MIT License - Excel Techfest 2025, Model Engineering College
+
+---
+
+Made with ❤️ for Excel Techfest 2025
