@@ -186,10 +186,11 @@ class CaptureManager:
         frames: int = None,
         interval_ms: int = None,
         duration_per_frame: float = 0.2,
-        save_to_disk: bool = True
+        save_to_disk: bool = True,
+        window_name: str = "Mascot View"
     ) -> CaptureResult:
         """
-        Capture frames and combine into animated GIF.
+        Capture frames and combine into animated GIF with smooth live preview.
         
         Args:
             cap: OpenCV VideoCapture object
@@ -197,6 +198,7 @@ class CaptureManager:
             frames: Number of frames (default: 8)
             interval_ms: Interval between captures in ms (default: 200)
             duration_per_frame: Duration of each frame in GIF (seconds)
+            window_name: Display window name
             
         Returns:
             CaptureResult with GIF
@@ -208,11 +210,38 @@ class CaptureManager:
         timestamps = []
         base_timestamp = int(time.time())
         
+        # Smooth capture with live preview
         for i in range(frames_count):
             ret, frame = cap.read()
             if ret:
                 timestamp = time.time()
-                # Apply filter first
+                
+                # Create display with recording indicator (before filter for speed)
+                display = frame.copy()
+                h, w = display.shape[:2]
+                
+                # Add REC indicator
+                cv2.circle(display, (30, 30), 12, (0, 0, 255), -1)  # Red dot
+                cv2.putText(display, "REC", (50, 38), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                
+                # Frame counter
+                cv2.putText(display, f"GIF Frame {i+1}/{frames_count}", 
+                           (w - 200, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                
+                # Progress bar
+                progress = (i + 1) / frames_count
+                bar_width = 200
+                bar_x = (w - bar_width) // 2
+                bar_y = h - 40
+                cv2.rectangle(display, (bar_x, bar_y), (bar_x + bar_width, bar_y + 10), (50, 50, 50), -1)
+                cv2.rectangle(display, (bar_x, bar_y), (bar_x + int(bar_width * progress), bar_y + 10), (0, 255, 0), -1)
+                
+                # Show live preview (non-blocking)
+                cv2.imshow(window_name, display)
+                cv2.waitKey(1)  # Minimal wait for responsive display
+                
+                # Apply filter (do this after display for smoother preview)
                 filtered = apply_filter(frame, filter_type)
                 
                 # Convert BGR to RGB for GIF
@@ -220,8 +249,33 @@ class CaptureManager:
                 images.append(rgb_frame)
                 timestamps.append(timestamp)
             
+            # Wait for next frame (but keep display responsive)
             if i < frames_count - 1:
-                time.sleep(interval_ms / 1000.0)
+                wait_start = time.time()
+                while (time.time() - wait_start) < (interval_ms / 1000.0):
+                    ret, preview = cap.read()
+                    if ret:
+                        # Show preview with waiting indicator
+                        h, w = preview.shape[:2]
+                        cv2.circle(preview, (30, 30), 12, (0, 0, 255), -1)
+                        cv2.putText(preview, "REC", (50, 38), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                        cv2.putText(preview, f"Next: {i+2}/{frames_count}", 
+                                   (w - 180, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                        cv2.imshow(window_name, preview)
+                    cv2.waitKey(30)  # ~30fps preview
+        
+        # Show "Processing..." message
+        ret, final_frame = cap.read()
+        if ret:
+            h, w = final_frame.shape[:2]
+            overlay = final_frame.copy()
+            cv2.rectangle(overlay, (w//4, h//2-30), (3*w//4, h//2+30), (0, 0, 0), -1)
+            final_frame = cv2.addWeighted(overlay, 0.7, final_frame, 0.3, 0)
+            cv2.putText(final_frame, "Creating GIF...", 
+                       (w//2 - 100, h//2 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.imshow(window_name, final_frame)
+            cv2.waitKey(100)
         
         # Create GIF
         gif_filename = f"animation_{base_timestamp}.gif"

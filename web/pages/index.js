@@ -171,7 +171,7 @@ export default function Gallery() {
                             <span className="panel-label">/// FILTERS</span>
                         </div>
                         <div className="btn-group">
-                            {['GLITCH', 'NEON', 'DREAMY', 'RETRO', 'NOIR', 'B&W'].map(f => (
+                            {['NORMAL', 'NEON', 'NOIR', 'RETRO', 'DREAMY', 'GLITCH', 'B&W'].map(f => (
                                 <button
                                     key={f}
                                     className={`ctrl-btn ${activeFilter === f ? 'active' : ''}`}
