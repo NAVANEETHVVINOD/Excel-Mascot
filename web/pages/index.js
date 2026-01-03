@@ -9,9 +9,28 @@ export default function Gallery() {
     const [activeFilter, setActiveFilter] = useState(null);
     const [loading, setLoading] = useState(true);
     const [visiblePhotos, setVisiblePhotos] = useState({});
+    const [installPrompt, setInstallPrompt] = useState(null);
     const photoRefs = useRef({});
 
     useEffect(() => {
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(
+                    registration => console.log('SW registered: ', registration.scope),
+                    err => console.log('SW registration failed: ', err)
+                );
+            });
+        }
+
+        // Handle PWA Install Prompt
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
         loadPhotos();
 
         const dbChannel = supabase
@@ -30,10 +49,20 @@ export default function Gallery() {
         });
 
         return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
             supabase.removeChannel(dbChannel);
             supabase.removeChannel(cmdChannel);
         };
     }, []);
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setInstallPrompt(null);
+        }
+    };
 
     // Intersection Observer for fade-in animation
     useEffect(() => {
@@ -207,6 +236,21 @@ export default function Gallery() {
                         </div>
                     </div>
                 </div>
+
+                {/* PWA Install Button */}
+                {installPrompt && (
+                    <button
+                        className="install-btn"
+                        onClick={handleInstallClick}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        INSTALL APP
+                    </button>
+                )}
             </section>
 
             {/* ===== PHOTO GALLERY ===== */}
@@ -531,6 +575,33 @@ export default function Gallery() {
                     display: grid;
                     grid-template-columns: repeat(3, 1fr);
                     gap: 8px;
+                }
+
+                .install-btn {
+                    grid-column: 1 / -1;
+                    width: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    border: 2px solid #00ff00;
+                    color: #00ff00;
+                    padding: 12px;
+                    margin-top: 16px;
+                    font-family: 'Press Start 2P', cursive;
+                    font-size: 0.7rem;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    transition: all 0.3s ease;
+                    text-transform: uppercase;
+                    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+                    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+                }
+
+                .install-btn:hover {
+                    background: rgba(0, 255, 0, 0.1);
+                    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+                    transform: scale(1.02);
                 }
 
                 .ctrl-btn {
