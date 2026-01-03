@@ -133,6 +133,10 @@ export default function Gallery() {
                 <link rel="manifest" href="/manifest.json" />
                 <link rel="icon" type="image/webp" href="/logo.webp" />
                 <link rel="apple-touch-icon" href="/logo.webp" />
+                {/* Retro Pixel Fonts */}
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
             </Head>
 
             {/* ===== ANIMATED BACKGROUND ===== */}
@@ -315,10 +319,12 @@ export default function Gallery() {
                 body {
                     background: var(--black);
                     color: #fff;
-                    font-family: 'Share Tech Mono', monospace;
+                    font-family: 'VT323', 'Share Tech Mono', monospace;
+                    font-size: 18px;
                     min-height: 100vh;
                     overflow-x: hidden;
-                    -webkit-font-smoothing: antialiased;
+                    -webkit-font-smoothing: none;
+                    image-rendering: pixelated;
                 }
 
                 .page-container {
@@ -422,22 +428,25 @@ export default function Gallery() {
                 }
 
                 .main-title {
-                    font-family: 'Orbitron', sans-serif;
-                    font-size: clamp(2.2rem, 8vw, 4rem);
-                    font-weight: 900;
+                    font-family: 'Press Start 2P', cursive;
+                    font-size: clamp(1.2rem, 5vw, 2.2rem);
+                    font-weight: 400;
                     letter-spacing: 2px;
                     background: linear-gradient(135deg, var(--gold) 0%, var(--orange) 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
-                    text-shadow: 0 0 50px rgba(255, 184, 0, 0.3);
+                    text-shadow: 0 0 30px rgba(255, 184, 0, 0.4);
+                    line-height: 1.4;
                 }
 
                 .main-subtitle {
-                    color: var(--muted);
-                    font-size: 0.85rem;
-                    letter-spacing: 3px;
+                    font-family: 'VT323', monospace;
+                    color: var(--gold);
+                    font-size: 1.2rem;
+                    letter-spacing: 4px;
                     text-transform: uppercase;
+                    margin-top: 8px;
                 }
 
                 .header-divider {
@@ -526,14 +535,14 @@ export default function Gallery() {
 
                 .ctrl-btn {
                     background: rgba(0, 0, 0, 0.6);
-                    border: 1px solid rgba(255, 140, 0, 0.3);
+                    border: 2px solid rgba(255, 140, 0, 0.4);
                     color: var(--gold);
                     padding: 10px 14px;
-                    font-family: 'Share Tech Mono', monospace;
-                    font-size: 0.65rem;
-                    letter-spacing: 1.5px;
+                    font-family: 'VT323', monospace;
+                    font-size: 1rem;
+                    letter-spacing: 2px;
                     cursor: pointer;
-                    transition: all 0.3s ease;
+                    transition: all 0.2s ease;
                 }
 
                 .ctrl-btn:hover {
@@ -550,9 +559,10 @@ export default function Gallery() {
                 }
 
                 .mode-btn {
-                    font-family: 'Orbitron', sans-serif;
-                    font-weight: 500;
+                    font-family: 'Press Start 2P', cursive;
+                    font-size: 0.55rem;
                     text-align: center;
+                    padding: 12px 10px;
                 }
 
                 /* ========== GALLERY SECTION ========== */
@@ -565,22 +575,22 @@ export default function Gallery() {
                 }
 
                 .section-title {
-                    font-family: 'Orbitron', sans-serif;
-                    font-size: clamp(1.5rem, 5vw, 2rem);
-                    font-weight: 700;
+                    font-family: 'Press Start 2P', cursive;
+                    font-size: clamp(0.8rem, 3vw, 1.2rem);
                     text-align: center;
-                    margin-bottom: 8px;
-                    letter-spacing: 3px;
                     background: linear-gradient(135deg, var(--gold) 0%, var(--orange) 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
+                    margin-bottom: 8px;
+                    line-height: 1.5;
                 }
 
                 .photo-count {
                     text-align: center;
-                    color: var(--muted);
-                    font-size: 0.8rem;
+                    color: var(--gold);
+                    font-family: 'VT323', monospace;
+                    font-size: 1.2rem;
                     margin-bottom: 40px;
                     letter-spacing: 2px;
                 }
