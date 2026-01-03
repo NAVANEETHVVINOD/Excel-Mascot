@@ -214,10 +214,10 @@ def apply_neon(image: np.ndarray) -> np.ndarray:
     result = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
     
     # Boost blue and red channels for neon glow
-    bgr = cv2.split(result)
-    bgr[0] = cv2.convertScaleAbs(bgr[0], alpha=1.15, beta=10)  # Blue boost
-    bgr[2] = cv2.convertScaleAbs(bgr[2], alpha=1.1, beta=8)    # Red boost
-    result = cv2.merge(bgr)
+    b, g, r = cv2.split(result)
+    b = cv2.convertScaleAbs(b, alpha=1.15, beta=10)  # Blue boost
+    r = cv2.convertScaleAbs(r, alpha=1.1, beta=8)    # Red boost
+    result = cv2.merge([b, g, r])
     
     # Add subtle bloom/glow
     blurred = cv2.GaussianBlur(result, (0, 0), 8)
@@ -302,11 +302,11 @@ def apply_retro(image: np.ndarray, text: str = "EXCEL 2025") -> np.ndarray:
     result = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
     
     # Add warm cast
-    bgr = cv2.split(result)
-    bgr[2] = cv2.convertScaleAbs(bgr[2], alpha=1.08, beta=8)   # Red warmth
-    bgr[1] = cv2.convertScaleAbs(bgr[1], alpha=1.02, beta=3)   # Slight green
-    bgr[0] = cv2.convertScaleAbs(bgr[0], alpha=0.95, beta=-5)  # Reduce blue
-    result = cv2.merge(bgr)
+    b, g, r = cv2.split(result)
+    r = cv2.convertScaleAbs(r, alpha=1.08, beta=8)   # Red warmth
+    g = cv2.convertScaleAbs(g, alpha=1.02, beta=3)   # Slight green
+    b = cv2.convertScaleAbs(b, alpha=0.95, beta=-5)  # Reduce blue
+    result = cv2.merge([b, g, r])
     
     # Add subtle vignette
     result = add_vignette(result, strength=0.25)
