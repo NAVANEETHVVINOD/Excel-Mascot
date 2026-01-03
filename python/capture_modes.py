@@ -128,8 +128,13 @@ class CaptureManager:
         timestamps = []
         base_timestamp = int(time.time())
         
-        # Capture 4 photos with flash effect between each
+        # Capture photos: first one immediately, then countdown between each subsequent photo
         for i in range(count):
+            # For photos after the first, show countdown
+            if i > 0:
+                # Show 4-second countdown before next photo
+                self.show_countdown(cap, window_name=window_name, seconds=4)
+            
             ret, frame = cap.read()
             if ret:
                 timestamp = time.time()
@@ -144,20 +149,12 @@ class CaptureManager:
                 cv2.imshow(window_name, flash_frame)
                 cv2.waitKey(50)
                 
-                # Show captured image briefly
-                cv2.imshow(window_name, filtered)
-                cv2.waitKey(100)
-            
-            if i < count - 1:
-                # Show countdown to next capture
-                remaining = count - i - 1
-                for _ in range(int(interval_ms / 50)):
-                    ret, preview = cap.read()
-                    if ret:
-                        cv2.putText(preview, f"Photo {i+2}/{count} in...", 
-                                    (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-                        cv2.imshow(window_name, preview)
-                        cv2.waitKey(50)
+                # Show captured image briefly with photo number
+                display = filtered.copy()
+                cv2.putText(display, f"Photo {i+1}/{count} captured!", 
+                            (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
+                cv2.imshow(window_name, display)
+                cv2.waitKey(300)
         
         # Show preview of all 4 photos for 2 seconds
         if images:

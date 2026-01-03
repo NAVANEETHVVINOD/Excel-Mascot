@@ -146,10 +146,9 @@ def main():
                 # Trigger LED immediately for all modes (visual feedback of trigger)
                 arduino.send_command("PHOTO")
                 
-                # Countdown ONLY for BURST (4 seconds as per requirement)
+                # No countdown before first photo in BURST mode - timer will be between photos
                 if mode == "BURST":
-                    time.sleep(0.5) # Wait for LED flash to settle
-                    capture_manager.show_countdown(cap, seconds=4)
+                    time.sleep(0.3) # Brief delay for LED flash to settle
                 else:
                     time.sleep(0.5) # Short delay for others
                 

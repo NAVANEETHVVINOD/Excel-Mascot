@@ -399,7 +399,7 @@ export default function Gallery() {
                 .corner-logo {
                     position: fixed;
                     top: 16px;
-                    right: 16px;
+                    left: 16px;
                     width: 70px;
                     height: 70px;
                     object-fit: contain;
@@ -832,7 +832,7 @@ export default function Gallery() {
                         width: 55px;
                         height: 55px;
                         top: 12px;
-                        right: 12px;
+                        left: 12px;
                     }
 
                     .main-header {
@@ -932,7 +932,7 @@ export default function Gallery() {
                         width: 45px;
                         height: 45px;
                         top: 10px;
-                        right: 10px;
+                        left: 10px;
                     }
 
                     .main-title {
