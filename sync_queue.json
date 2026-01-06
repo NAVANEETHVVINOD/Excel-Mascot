@@ -3,14 +3,14 @@
     "filepath": "offline_cache/mascot_photo_1767186760.jpg",
     "timestamp": 1767186764.613042,
     "metadata": {},
-    "status": "pending",
-    "retries": 0
+    "status": "failed_permanently",
+    "retries": 6
   },
   {
     "filepath": "offline_cache/mascot_photo_1767186779.jpg",
     "timestamp": 1767186782.6470084,
     "metadata": {},
-    "status": "pending",
-    "retries": 0
+    "status": "failed_permanently",
+    "retries": 6
   }
 ]

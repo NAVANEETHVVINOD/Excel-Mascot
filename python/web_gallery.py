@@ -396,10 +396,24 @@ def delete_file(filename):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+def is_port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
 def start_gallery_server():
+    if is_port_in_use(5000):
+        print("ℹ️ Web Server already running on port 5000. Skipping internal server.")
+        return
+        
+    print("🚀 Starting Internal Web Gallery Server...")
     # Run on 0.0.0.0 to be accessible
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
 def start_gallery_thread():
+    # Check immediately before threading
+    if is_port_in_use(5000):
+        print("ℹ️ Web Server detected on port 5000. Using existing server.")
+        return
+
     t = threading.Thread(target=start_gallery_server, daemon=True)
     t.start()

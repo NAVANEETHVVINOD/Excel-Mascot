@@ -1,19 +1,23 @@
-// import { supabase } from "../supabaseClient"; // Disabled for Local Mode
+import { supabase } from "../supabaseClient";
 import { useEffect, useState, useRef } from "react";
 import Head from "next/head";
 
-const API_BASE = "http://localhost:5000";
+const LOCAL_API_BASE = "http://localhost:5000";
 
 export default function Gallery() {
     const [photos, setPhotos] = useState([]);
-    // const [commandChannel, setCommandChannel] = useState(null);
     const [activeMode, setActiveMode] = useState('SINGLE');
     const [activeFilter, setActiveFilter] = useState('NORMAL');
     const [loading, setLoading] = useState(true);
     const [visiblePhotos, setVisiblePhotos] = useState({});
+    const [isLocal, setIsLocal] = useState(false);
     const photoRefs = useRef({});
 
     useEffect(() => {
+        // DETECT ENVIRONMENT
+        const clsHelper = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        setIsLocal(clsHelper);
+
         // Register Service Worker for PWA support
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -24,16 +28,28 @@ export default function Gallery() {
             });
         }
 
-        loadPhotos();
-        syncStatus();
+        loadPhotos(false, clsHelper); // Initial Load
 
-        // POLL Local API for changes (Simulating Realtime)
-        const intervalId = setInterval(() => {
-            loadPhotos(true); // Silent reload
-            syncStatus();     // Sync mode/filter
-        }, 3000);
+        if (clsHelper) {
+            syncStatus();
+            // POLL Local API for changes (Simulating Realtime)
+            const intervalId = setInterval(() => {
+                loadPhotos(true, true); // Silent reload
+                syncStatus();     // Sync mode/filter
+            }, 3000);
+            return () => clearInterval(intervalId);
+        } else {
+            // SUPABASE REALTIME SUBSCRIPTION
+            const subscription = supabase
+                .channel('public:photos')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, (payload) => {
+                    console.log('Realtime update:', payload);
+                    loadPhotos(true, false);
+                })
+                .subscribe();
 
-        return () => clearInterval(intervalId);
+            return () => supabase.removeChannel(subscription);
+        }
     }, []);
 
     // Intersection Observer for fade-in animation
@@ -57,27 +73,41 @@ export default function Gallery() {
         return () => observer.disconnect();
     }, [photos]);
 
-    async function loadPhotos(silent = false) {
+    async function loadPhotos(silent = false, forceLocal = false) {
         if (!silent) setLoading(true);
         try {
-            // Add timestamp to prevent caching
-            const res = await fetch(`${API_BASE}/api/photos?t=${Date.now()}`);
-            const data = await res.json();
+            let formatted = [];
 
-            // Transform to match previous structure if needed
-            // API returns: [{ id, name, url, created_at }, ...]
-            // Next.js expects: { id, image_url, created_at, ... }
-            const formatted = data.map(p => ({
-                id: p.id,
-                image_url: p.url, // Use full URL from API
-                created_at: new Date(p.created_at * 1000).toISOString(), // Python timestamp is seconds
-                isNew: false // We can calculate this diff if we want animation, ignoring for now or todo
-            }));
+            if (forceLocal) {
+                // --- LOCAL SAVED FILES ---
+                const res = await fetch(`${LOCAL_API_BASE}/api/photos?t=${Date.now()}`);
+                const data = await res.json();
+                formatted = data.map(p => ({
+                    id: p.id,
+                    image_url: p.url,
+                    created_at: new Date(p.created_at * 1000).toISOString(),
+                    isNew: false
+                }));
+            } else {
+                // --- SUPABASE CLOUD ---
+                const { data, error } = await supabase
+                    .from('photos')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-            // Basic diff check for 'isNew' animation could go here
-            // For now just set data
+                if (error) throw error;
+
+                formatted = data.map(p => ({
+                    id: p.id,
+                    // Handle case where image_url might require signing or direct public link
+                    // Assuming public bucket for now
+                    image_url: p.image_url,
+                    created_at: p.created_at,
+                    isNew: false
+                }));
+            }
+
             setPhotos(prev => {
-                // Determine new photos for animation
                 const existingIds = new Set(prev.map(p => p.id));
                 const withNewFlag = formatted.map(p => ({
                     ...p,
@@ -92,9 +122,15 @@ export default function Gallery() {
         if (!silent) setLoading(false);
     }
 
+    // REMOVE BROKEN IMAGES (Black Cards)
+    const handleImageError = (id) => {
+        console.warn(`Image load failed for ID: ${id}. Removing from display.`);
+        setPhotos(prev => prev.filter(photo => photo.id !== id));
+    };
+
     async function syncStatus() {
         try {
-            const res = await fetch(`${API_BASE}/get_filter`);
+            const res = await fetch(`${LOCAL_API_BASE}/get_filter`);
             const data = await res.json();
             if (data.filter) setActiveFilter(data.filter);
             if (data.mode) setActiveMode(data.mode);
@@ -104,7 +140,7 @@ export default function Gallery() {
     const setMode = async (mode) => {
         setActiveMode(mode);
         try {
-            await fetch(`${API_BASE}/set_mode/${mode}`);
+            if (isLocal) await fetch(`${LOCAL_API_BASE}/set_mode/${mode}`);
         } catch (e) { console.error(e); }
     };
 
@@ -112,7 +148,7 @@ export default function Gallery() {
         const newFilter = (activeFilter === filter) ? 'NORMAL' : filter;
         setActiveFilter(newFilter);
         try {
-            await fetch(`${API_BASE}/set_filter/${newFilter}`);
+            if (isLocal) await fetch(`${LOCAL_API_BASE}/set_filter/${newFilter}`);
         } catch (e) { console.error(e); }
     };
 
@@ -270,6 +306,7 @@ export default function Gallery() {
                                             src={photo.image_url}
                                             alt={`Photo ${index + 1}`}
                                             loading="lazy"
+                                            onError={() => handleImageError(photo.id)}
                                         />
                                         <div className="photo-overlay">
                                             <button
