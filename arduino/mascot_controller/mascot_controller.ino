@@ -1,28 +1,23 @@
-#include <Servo.h>
 #include <Adafruit_NeoPixel.h>
 
-// ---------- Pins ----------
+// ---------- Ultrasonic Sensor Pins ----------
 const int trigPin = 9;
 const int echoPin = 10;
 long duration;
 float distance;
 
-Servo myServo;
+// ---------- LED STRIPS (2 EYES ONLY) ----------
+// LEFT EYE - Pin 7
+#define LED_PIN_LEFT 7
+#define LED_COUNT_LEFT 15
+Adafruit_NeoPixel leftEye(LED_COUNT_LEFT, LED_PIN_LEFT, NEO_GRB + NEO_KHZ800);
 
-// ---------- LED STRIPS ----------
-#define LED_PIN_1 6
-#define LED_COUNT_1 15
-Adafruit_NeoPixel strip1(LED_COUNT_1, LED_PIN_1, NEO_GRB + NEO_KHZ800);
+// RIGHT EYE - Pin 8
+#define LED_PIN_RIGHT 8
+#define LED_COUNT_RIGHT 15
+Adafruit_NeoPixel rightEye(LED_COUNT_RIGHT, LED_PIN_RIGHT, NEO_GRB + NEO_KHZ800);
 
-#define LED_PIN_3 8
-#define LED_COUNT_3 15
-Adafruit_NeoPixel strip3(LED_COUNT_3, LED_PIN_3, NEO_GRB + NEO_KHZ800);
-
-#define LED_PIN_2 7
-#define LED_COUNT_2 10
-Adafruit_NeoPixel strip2(LED_COUNT_2, LED_PIN_2, NEO_GRB + NEO_KHZ800);
-
-// inner LEDs (pupil)
+// Inner LEDs (pupil) - center of the eye
 int innerLEDs[] = {4, 5, 8, 9};
 
 bool isInner(int idx) {
@@ -33,22 +28,23 @@ bool isInner(int idx) {
 }
 
 // ----------------------------------------------------------
-// STEPPER MOTOR (NEMA 17 + TB6600)
+// STEPPER MOTOR (NEMA 17 + TB6600) - For waving hand
 // ----------------------------------------------------------
 #define STEP_PIN 2
 #define DIR_PIN 3
 #define ENA_PIN 4
 
-// Stepper Configuration
-const int stepsPerWave = 100; // Adjust based on desired angle (assuming 200 steps/rev)
-const int stepDelay = 3000;   // Microseconds between steps (Speed)
+// Stepper Configuration - SLOW bye-bye wave (~80% movement)
+const int stepsPerWave = 80;    // ~80% movement (was 60)
+const int stepDelay = 4500;     // Slow speed
 
 void waveStepper() {
   // Enable the driver
-  digitalWrite(ENA_PIN, LOW); // LOW usually enables for Common Anode logic
+  digitalWrite(ENA_PIN, LOW);
 
-  for(int k=0; k<3; k++) {
-    // Clockwise
+  // 2 waves for bye-bye gesture
+  for(int k = 0; k < 2; k++) {
+    // Clockwise - slow wave
     digitalWrite(DIR_PIN, HIGH);
     for(int x = 0; x < stepsPerWave; x++) {
       digitalWrite(STEP_PIN, HIGH);
@@ -57,9 +53,9 @@ void waveStepper() {
       delayMicroseconds(stepDelay);
     }
     
-    delay(200);
+    delay(300); // Pause at end
 
-    // Counter-Clockwise
+    // Counter-Clockwise - slow wave back
     digitalWrite(DIR_PIN, LOW);
     for(int x = 0; x < stepsPerWave; x++) {
       digitalWrite(STEP_PIN, HIGH);
@@ -67,19 +63,20 @@ void waveStepper() {
       digitalWrite(STEP_PIN, LOW);
       delayMicroseconds(stepDelay);
     }
-    delay(200);
+    delay(300);
   }
 
-  // Disable to save power (optional)
+  // Disable to save power
   digitalWrite(ENA_PIN, HIGH);
 }
 
 // ----------------------------------------------------------
 void setup() {
+  // Ultrasonic pins
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   
-  // Stepper Setup
+  // Stepper pins
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
   pinMode(ENA_PIN, OUTPUT);
@@ -88,45 +85,116 @@ void setup() {
   Serial.begin(9600);
   Serial.setTimeout(10); 
 
-  myServo.attach(11);
-  myServo.write(30);
-  delay(500);
-  myServo.detach(); 
-
-  strip1.begin(); strip1.show();
-  strip2.begin(); strip2.show();
-  strip3.begin(); strip3.show();
+  // Initialize both eye strips
+  leftEye.begin();
+  leftEye.setBrightness(255);
+  leftEye.show();
   
-  Serial.println("Mascot Ready - Retro & Animated (Stepper Added)");
+  rightEye.begin();
+  rightEye.setBrightness(255);
+  rightEye.show();
+  
+  // Test both eyes on startup
+  testEyes();
+  
+  Serial.println("Mascot Ready - Stepper Only (No Servo)");
+  Serial.println("Pins: Left Eye=7, Right Eye=8, Stepper=2,3,4, Ultrasonic=9,10");
+}
+
+// Test function to verify both eyes work
+void testEyes() {
+  Serial.println("Testing LEFT eye (Pin 7)...");
+  // Flash left eye (pin 7) - RED - ALL LEDs including 4,5
+  for(int i = 0; i < LED_COUNT_LEFT; i++) {
+    leftEye.setPixelColor(i, leftEye.Color(255, 0, 0));
+  }
+  leftEye.show();
+  delay(1000);
+  
+  // Test LEDs 4 and 5 specifically on left eye
+  leftEye.clear();
+  leftEye.setPixelColor(4, leftEye.Color(0, 255, 0)); // Green
+  leftEye.setPixelColor(5, leftEye.Color(0, 255, 0)); // Green
+  leftEye.show();
+  Serial.println("Left eye LEDs 4,5 should be GREEN");
+  delay(1000);
+  leftEye.clear();
+  leftEye.show();
+  
+  Serial.println("Testing RIGHT eye (Pin 8)...");
+  // Flash right eye (pin 8) - GREEN - ALL LEDs including 4,5
+  for(int i = 0; i < LED_COUNT_RIGHT; i++) {
+    rightEye.setPixelColor(i, rightEye.Color(0, 255, 0));
+  }
+  rightEye.show();
+  delay(1000);
+  
+  // Test LEDs 4 and 5 specifically on right eye
+  rightEye.clear();
+  rightEye.setPixelColor(4, rightEye.Color(255, 0, 0)); // Red
+  rightEye.setPixelColor(5, rightEye.Color(255, 0, 0)); // Red
+  rightEye.show();
+  Serial.println("Right eye LEDs 4,5 should be RED");
+  delay(1000);
+  rightEye.clear();
+  rightEye.show();
+  
+  Serial.println("Testing BOTH eyes together...");
+  // Both eyes together - YELLOW
+  for(int i = 0; i < 15; i++) {
+    leftEye.setPixelColor(i, leftEye.Color(255, 200, 0));
+    rightEye.setPixelColor(i, rightEye.Color(255, 200, 0));
+  }
+  leftEye.show();
+  rightEye.show();
+  delay(1000);
+  
+  Serial.println("Eye test complete!");
 }
 
 // ----------------------------------------------------------
 long lastIdleTime = 0;
-int idleState = 0; // 0=Normal, 1=Wink, 2=Happy/Blink
+long lastWaveTime = 0;  // Prevent wave spam
 
 void loop() {
-  // 1. Check for Serial Override
+  // 1. Check for Serial Commands
   if (Serial.available()) {
      String cmd = Serial.readStringUntil('\n');
      cmd.trim();
      
      if (cmd == "PHOTO") {
-        photoFlash(); // Instant Flash
+        photoFlash(); // LED animation + wave on photo
         return; 
      }
      else if (cmd == "LOVE") {
         emotionLove();
-        lastIdleTime = millis(); // Reset idle timer
+        delay(2000);
+        lastIdleTime = millis();
         return;
      }
      else if (cmd == "SUS") {
-        emotionSus(); 
+        // Run sus animation for 3 seconds
+        unsigned long susStart = millis();
+        while(millis() - susStart < 3000) {
+          emotionSus();
+          delay(30);
+        }
         lastIdleTime = millis();
         return;
      }
      else if (cmd == "WAVE") {
+        Serial.println("WAVE command - Testing stepper motor");
         waveStepper();
         lastIdleTime = millis();
+        return;
+     }
+     else if (cmd == "TEST") {
+        Serial.println("TEST command - Testing all components");
+        testEyes();
+        delay(500);
+        Serial.println("Testing motor...");
+        waveStepper();
+        Serial.println("Test complete!");
         return;
      }
   }
@@ -146,28 +214,32 @@ void loop() {
   // DEBUG PRINT
   Serial.print("Dist: "); Serial.println(distance);
 
-  // Increased threshold to 150cm based on user logs
-  if (distance > 0 && distance < 150) {
-    Serial.println(">>> OBJECT DETECTED! WAVING! <<<"); // Debug Print
+  // DISTANCE ZONES:
+  // 0-50cm = Very close = LOVE + WAVE
+  // 50-120cm = Medium = SUS (suspicious)
+  // >120cm = Far = NORMAL/IDLE
+
+  // Very close - wave and show love
+  if (distance > 0 && distance < 50) {
+    Serial.println(">>> VERY CLOSE! LOVE + WAVE! <<<");
     emotionLove();
+    
+    // Only wave if not waved recently (prevent spam)
+    if (millis() - lastWaveTime > 5000) {
+      waveStepper();  // Stepper waves bye-bye
+      lastWaveTime = millis();
+    }
+    
     lastIdleTime = millis();
-    
-    // Quick Servo Wave
-    if(!myServo.attached()) myServo.attach(11);
-    myServo.write(110); 
-    
-    waveStepper(); // Trigger Stepper Wave on proximity
-    
-    myServo.write(30);
-    delay(100);
-    myServo.detach(); 
   }
-  else if (distance >= 20 && distance < 60) {
+  // Medium distance - suspicious look
+  else if (distance >= 50 && distance < 120) {
+    Serial.println(">>> MEDIUM DISTANCE - SUS MODE <<<");
     emotionSus();
     lastIdleTime = millis();
   }
+  // Far or no object - idle animations
   else {
-    // IDLE MODE / NORMAL
     if (millis() - lastIdleTime > 6000) {
        int randAnim = random(0, 5); 
        if(randAnim == 1) emotionWink();
@@ -184,128 +256,180 @@ void loop() {
   delay(50); 
 }
 
-// =================== PHOTO FLASH (INSTANT) ===================
-// =================== PHOTO FLASH (Key Change: SLOW LOVE BLINK) ===================
+// =================== PHOTO FLASH - LED CHANGES WHEN CLICKING PHOTO ===================
 void photoFlash() {
-  // User requested "blink the love imojie... little bit slow"
-  if(!myServo.attached()) myServo.attach(11);
-  myServo.write(110); // Wave
+  Serial.println("PHOTO MODE - Love Eyes + White Flash");
   
-  waveStepper(); // Added Stepper Wave here too
+  // 1. Love Eyes (Hearts)
+  emotionLove();
+  delay(500); // Show hearts for 0.5s before flash
   
-  for(int k=0; k<2; k++){
-      emotionLove(); // Show Love Pulse
-      delay(600);    // Slow hold (0.6s)
-      
-      strip1.clear(); strip3.clear();
-      strip1.show(); strip3.show();
-      delay(300);    // Off interval
+  // 2. White Flash
+  for(int i = 0; i < 15; i++) {
+    leftEye.setPixelColor(i, leftEye.Color(255, 255, 255));
+    rightEye.setPixelColor(i, rightEye.Color(255, 255, 255));
   }
+  leftEye.show();
+  rightEye.show();
+  delay(150); // Flash duration
   
-  myServo.write(30);
-  delay(200);
-  myServo.detach();
+  // 3. Back to Love Eyes briefly
+  emotionLove();
+  
+  // 4. Wave Stepper
+  waveStepper();
+  
+  // 5. Return to normal
+  emotionNormal();
 }
 
-// =================== LOVE MODE ===================
+// =================== RAINBOW ANIMATION ===================
+void emotionRainbow() {
+  // Spin colors 2 times
+  for(int k=0; k<256*2; k+=20) { 
+     for(int i=0; i<15; i++) {
+        // Pixel hue offset by position
+        int pixelHue = k + (i * 65536L / 15);
+        leftEye.setPixelColor(i, leftEye.gamma32(leftEye.ColorHSV(pixelHue)));
+        rightEye.setPixelColor(i, rightEye.gamma32(rightEye.ColorHSV(pixelHue)));
+     }
+     leftEye.show();
+     rightEye.show();
+     delay(5);
+  }
+}
+
+// =================== LOVE MODE - Pink hearts ===================
+// LEFT EYE: LEDs 8,9 are white (pupil)
+// RIGHT EYE: LEDs 4,5 are white (pupil)
 void emotionLove() {
-  int loveIdx[] = {0, 2, 3, 4, 5, 6, 7, 10, 11, 13, 14};
-  uint32_t pink = strip1.Color(255, 20, 147);
-  uint32_t white = strip1.Color(255, 255, 255);
+  // Heart shape LED indices
+  int loveIdx[] = {0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14};
+  uint32_t pink = leftEye.Color(255, 20, 147);
+  uint32_t white = leftEye.Color(255, 255, 255);
 
-  strip1.clear(); strip3.clear(); 
+  leftEye.clear();
+  rightEye.clear();
 
+  // Set all love LEDs
   for (int i = 0; i < sizeof(loveIdx)/sizeof(loveIdx[0]); i++) {
     int idx = loveIdx[i];
-    bool pupil = (idx == 4 || idx == 5);
-    strip1.setPixelColor(idx, pupil ? white : pink);
-    strip3.setPixelColor(idx, pupil ? white : pink);
+    
+    // LEFT EYE: LEDs 8 and 9 are white (pupil)
+    if (idx == 8 || idx == 9) {
+      leftEye.setPixelColor(idx, white);
+    } else {
+      leftEye.setPixelColor(idx, pink);
+    }
+    
+    // RIGHT EYE: LEDs 4 and 5 are white (pupil)
+    if (idx == 4 || idx == 5) {
+      rightEye.setPixelColor(idx, white);
+    } else {
+      rightEye.setPixelColor(idx, pink);
+    }
   }
-  strip1.show(); strip3.show();
+  
+  leftEye.show();
+  rightEye.show();
 }
 
-// =================== SUS MODE (SMOOTHER) ===================
+// =================== SUS MODE - Suspicious narrowed eyes ===================
 void emotionSus() {
-  int susLeds[] = {3,4,5,6,7,8,9,10};
+  // Narrowed eye LEDs (middle row only)
+  int susLeds[] = {3, 4, 5, 6, 7, 8, 9, 10};
   
-  // SLOWER BREATHING
-  // millis()/600.0 makes the wave 3x wider/slower than 200.0
-  float val = (exp(sin(millis()/600.0*PI)) - 0.36787944)*108.0; 
+  // Breathing effect - slow pulse
+  float val = (exp(sin(millis() / 600.0 * PI)) - 0.36787944) * 108.0; 
   int brightness = (int)val;
   if(brightness > 255) brightness = 255;
-  if(brightness < 10) brightness = 10; // Min brightness
+  if(brightness < 30) brightness = 30; // Minimum brightness so it's visible
   
-  uint32_t color = strip1.Color(brightness, (brightness*200)/255, 0);
+  // Orange/amber color for suspicious look
+  uint32_t susColor = leftEye.Color(brightness, (brightness * 150) / 255, 0);
 
-  strip1.clear(); strip3.clear();
-  for (int i = 0; i < 8; i++) {
-     strip1.setPixelColor(susLeds[i], color);
-     strip3.setPixelColor(susLeds[i], color);
-  }
-  strip1.show(); strip3.show(); // Removed delay(20) to avoid blocking main loop too much if called often
-}
-void emotionNormal() {
-  strip1.clear(); strip3.clear();
-  uint32_t redDim = strip1.Color(120, 0, 0);
+  leftEye.clear();
+  rightEye.clear();
   
-  // Calculate Slow Blink/Breathing for Inner LEDs
-  // sin wave based on time (approx 2s period)
-  float breath = (exp(sin(millis()/800.0*PI)) - 0.36787944)*108.0;
+  // Set the narrowed eye pattern on BOTH eyes
+  for (int i = 0; i < 8; i++) {
+    leftEye.setPixelColor(susLeds[i], susColor);
+    rightEye.setPixelColor(susLeds[i], susColor);
+  }
+  
+  leftEye.show();
+  rightEye.show();
+}
+
+// =================== NORMAL MODE - Default eyes ===================
+void emotionNormal() {
+  leftEye.clear();
+  rightEye.clear();
+  
+  uint32_t redDim = leftEye.Color(120, 0, 0);
+  
+  // Breathing effect for pupils
+  float breath = (exp(sin(millis() / 800.0 * PI)) - 0.36787944) * 108.0;
   int bVal = (int)breath;
   if(bVal > 255) bVal = 255; 
   if(bVal < 10) bVal = 10;
   
-  uint32_t yellowBlink = strip1.Color(bVal, (bVal*200)/255, 0); // Preserve Yellow Ratio
+  uint32_t yellowBlink = leftEye.Color(bVal, (bVal * 200) / 255, 0);
 
-  // Outer LEDs Static Red
+  // Outer LEDs - Static Red
   for (int i = 0; i < 15; i++) {
-    if (i == 14) continue; 
+    if (i == 14) continue;
     if (!isInner(i)) {
-      strip1.setPixelColor(i, redDim);
-      strip3.setPixelColor(i, redDim);
+      leftEye.setPixelColor(i, redDim);
+      rightEye.setPixelColor(i, redDim);
     }
   }
-  // Inner LEDs Blinking Yellow
+  
+  // Inner LEDs (pupils) - Breathing Yellow
   for (int i = 0; i < 4; i++) {
-    strip1.setPixelColor(innerLEDs[i], yellowBlink);
-    strip3.setPixelColor(innerLEDs[i], yellowBlink);
+    leftEye.setPixelColor(innerLEDs[i], yellowBlink);
+    rightEye.setPixelColor(innerLEDs[i], yellowBlink);
   }
-  strip1.show(); strip3.show();
+  
+  leftEye.show();
+  rightEye.show();
 }
 
 // =================== WINK ANIMATION ===================
 void emotionWink() {
-  // Left eye (Strip 1) Closes (turns off or line)
-  // Right eye (Strip 3) stays Normal
-  strip1.clear(); // Close Left Eye
-  
-  // Draw Line on Left Eye (Eyelid closed)
-  // 6, 7, 8, 9 are bottom? 
-  strip1.setPixelColor(7, strip1.Color(100,0,0)); 
-  strip1.setPixelColor(8, strip1.Color(100,0,0));
+  // Left eye closes (wink)
+  leftEye.clear();
+  leftEye.setPixelColor(7, leftEye.Color(100, 0, 0)); 
+  leftEye.setPixelColor(8, leftEye.Color(100, 0, 0));
 
-  // Right Eye Normal
-  uint32_t redDim = strip3.Color(120, 0, 0);
-  uint32_t yellow = strip3.Color(255, 200, 0);
+  // Right eye stays normal
+  uint32_t redDim = rightEye.Color(120, 0, 0);
+  uint32_t yellow = rightEye.Color(255, 200, 0);
   
-  strip3.clear();
+  rightEye.clear();
   for (int i = 0; i < 15; i++) {
     if (i == 14) continue; 
-    if (!isInner(i)) strip3.setPixelColor(i, redDim);
+    if (!isInner(i)) rightEye.setPixelColor(i, redDim);
   }
-  for (int i = 0; i < 4; i++) strip3.setPixelColor(innerLEDs[i], yellow);
+  for (int i = 0; i < 4; i++) {
+    rightEye.setPixelColor(innerLEDs[i], yellow);
+  }
 
-  strip1.show(); strip3.show();
+  leftEye.show();
+  rightEye.show();
 }
 
 // =================== HAPPY BLINK ===================
 void emotionHappyBlink() {
   // Both eyes blink rapidly twice
-  for(int j=0; j<2; j++) {
-     strip1.clear(); strip3.clear();
-     strip1.show(); strip3.show();
-     delay(150);
-     emotionNormal();
-     delay(150);
+  for(int j = 0; j < 2; j++) {
+    leftEye.clear();
+    rightEye.clear();
+    leftEye.show();
+    rightEye.show();
+    delay(150);
+    
+    emotionNormal();
+    delay(150);
   }
 }

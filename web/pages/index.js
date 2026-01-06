@@ -1,12 +1,14 @@
-import { supabase } from "../supabaseClient";
+// import { supabase } from "../supabaseClient"; // Disabled for Local Mode
 import { useEffect, useState, useRef } from "react";
 import Head from "next/head";
 
+const API_BASE = "http://localhost:5000";
+
 export default function Gallery() {
     const [photos, setPhotos] = useState([]);
-    const [commandChannel, setCommandChannel] = useState(null);
+    // const [commandChannel, setCommandChannel] = useState(null);
     const [activeMode, setActiveMode] = useState('SINGLE');
-    const [activeFilter, setActiveFilter] = useState(null);
+    const [activeFilter, setActiveFilter] = useState('NORMAL');
     const [loading, setLoading] = useState(true);
     const [visiblePhotos, setVisiblePhotos] = useState({});
     const photoRefs = useRef({});
@@ -23,26 +25,15 @@ export default function Gallery() {
         }
 
         loadPhotos();
+        syncStatus();
 
-        const dbChannel = supabase
-            .channel("photos-changes")
-            .on("postgres_changes", { event: "INSERT", schema: "public", table: "photos" }, payload => {
-                setPhotos(prev => [{ ...payload.new, isNew: true }, ...prev]);
-                setTimeout(() => {
-                    setPhotos(prev => prev.map(p => p.id === payload.new.id ? { ...p, isNew: false } : p));
-                }, 2000);
-            })
-            .subscribe();
+        // POLL Local API for changes (Simulating Realtime)
+        const intervalId = setInterval(() => {
+            loadPhotos(true); // Silent reload
+            syncStatus();     // Sync mode/filter
+        }, 3000);
 
-        const cmdChannel = supabase.channel('booth_control');
-        cmdChannel.subscribe(status => {
-            if (status === 'SUBSCRIBED') setCommandChannel(cmdChannel);
-        });
-
-        return () => {
-            supabase.removeChannel(dbChannel);
-            supabase.removeChannel(cmdChannel);
-        };
+        return () => clearInterval(intervalId);
     }, []);
 
     // Intersection Observer for fade-in animation
@@ -66,47 +57,63 @@ export default function Gallery() {
         return () => observer.disconnect();
     }, [photos]);
 
-    async function loadPhotos() {
-        setLoading(true);
+    async function loadPhotos(silent = false) {
+        if (!silent) setLoading(true);
         try {
-            let { data, error } = await supabase
-                .from("photos")
-                .select("*")
-                .order("created_at", { ascending: false });
-            if (error) {
-                console.error("Error loading photos:", error);
-            } else {
-                setPhotos(data || []);
-            }
+            // Add timestamp to prevent caching
+            const res = await fetch(`${API_BASE}/api/photos?t=${Date.now()}`);
+            const data = await res.json();
+
+            // Transform to match previous structure if needed
+            // API returns: [{ id, name, url, created_at }, ...]
+            // Next.js expects: { id, image_url, created_at, ... }
+            const formatted = data.map(p => ({
+                id: p.id,
+                image_url: p.url, // Use full URL from API
+                created_at: new Date(p.created_at * 1000).toISOString(), // Python timestamp is seconds
+                isNew: false // We can calculate this diff if we want animation, ignoring for now or todo
+            }));
+
+            // Basic diff check for 'isNew' animation could go here
+            // For now just set data
+            setPhotos(prev => {
+                // Determine new photos for animation
+                const existingIds = new Set(prev.map(p => p.id));
+                const withNewFlag = formatted.map(p => ({
+                    ...p,
+                    isNew: !existingIds.has(p.id)
+                }));
+                return withNewFlag;
+            });
+
         } catch (err) {
             console.error("Failed to load photos:", err);
         }
-        setLoading(false);
+        if (!silent) setLoading(false);
     }
 
-    const sendCommand = async (type, payload) => {
-        if (commandChannel) {
-            await commandChannel.send({
-                type: 'broadcast',
-                event: 'command',
-                payload: { type, ...payload }
-            });
-        }
-    };
+    async function syncStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/get_filter`);
+            const data = await res.json();
+            if (data.filter) setActiveFilter(data.filter);
+            if (data.mode) setActiveMode(data.mode);
+        } catch (e) { /* ignore offline errors */ }
+    }
 
-    const setMode = (mode) => {
+    const setMode = async (mode) => {
         setActiveMode(mode);
-        sendCommand('SET_MODE', { mode });
+        try {
+            await fetch(`${API_BASE}/set_mode/${mode}`);
+        } catch (e) { console.error(e); }
     };
 
-    const setFilter = (filter) => {
-        if (activeFilter === filter) {
-            setActiveFilter(null);
-            sendCommand('SET_FILTER', { filter: 'NONE' });
-        } else {
-            setActiveFilter(filter);
-            sendCommand('SET_FILTER', { filter });
-        }
+    const setFilter = async (filter) => {
+        const newFilter = (activeFilter === filter) ? 'NORMAL' : filter;
+        setActiveFilter(newFilter);
+        try {
+            await fetch(`${API_BASE}/set_filter/${newFilter}`);
+        } catch (e) { console.error(e); }
     };
 
     const formatDate = (dateStr) => {

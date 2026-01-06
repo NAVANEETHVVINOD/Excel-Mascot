@@ -11,6 +11,43 @@ from sync_queue import SyncQueue
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 sync_queue = SyncQueue()
 
+def cleanup_storage(limit=600):
+    """
+    Enforces a rolling window of photos.
+    Keeps only the latest `limit` photos.
+    Deletes older ones from Storage & DB.
+    """
+    try:
+        # Fetch all photos sorted by Time (Oldest -> Newest)
+        # We don't use 'id' as it might not be primary or reliable. Filename is our key.
+        resp = supabase.table("photos").select("filename, image_url, created_at").order("created_at", desc=False).execute()
+        photos = resp.data
+        
+        count = len(photos)
+        if count > limit:
+            extra = count - limit
+            print(f"🧹 Cleanup: Found {count} photos. Limit is {limit}. Deleting {extra} old photos...")
+            
+            for i in range(extra):
+                old = photos[i]
+                
+                fname = old.get("filename")
+                if fname:
+                    # 1. Delete from Storage
+                    try:
+                        supabase.storage.from_(BUCKET_NAME).remove([fname])
+                    except Exception as stor_err:
+                        print(f"⚠️ Storage delete error for {fname}: {stor_err}")
+
+                    # 2. Delete from DB (Match by filename)
+                    # Use filename instead of id since id crashed previously
+                    supabase.table("photos").delete().eq("filename", fname).execute()
+                    
+                    print(f"🗑️ Deleted Old Photo: {fname}")
+                
+    except Exception as e:
+        print(f"⚠️ Cleanup Error: {e}")
+
 def upload_photo(local_path, metadata=None):
     """
     Uploads a photo to Supabase.
@@ -53,6 +90,9 @@ def upload_photo(local_path, metadata=None):
             
             # If success, also try to process pending queue!
             process_queue()
+            
+            # Enforce Storage Limit
+            cleanup_storage(600)
             
             return public_url
 
@@ -98,6 +138,10 @@ def upload_bytes(file_bytes, filename, metadata=None):
             supabase.table("photos").insert(data).execute()
             
             print(f"✅ Success! Uploaded to Cloud: {public_url}")
+            
+            # Enforce Storage Limit
+            cleanup_storage(600)
+            
             return public_url
 
         except Exception as e:

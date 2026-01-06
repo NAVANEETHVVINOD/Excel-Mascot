@@ -2,11 +2,37 @@ from flask import Flask, send_from_directory, render_template_string, request, j
 import os
 import threading
 import socket
+import glob
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app) # Enable CORS for Next.js frontend
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PHOTO_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "photos"))
+# Default to E:\mascot if available
+local_hdd_path = r"E:\mascot"
+THUMBNAIL_SUBDIR = "thumbnails" # Web ready images
+
+# Force creation if it doesn't exist to ensure we use it
+if not os.path.exists(local_hdd_path):
+    try:
+        os.makedirs(local_hdd_path)
+        base_storage = local_hdd_path
+    except Exception as e:
+        print(f"⚠️ Could not create E:\\mascot: {e}")
+        base_storage = os.path.normpath(os.path.join(BASE_DIR, "..", "photos"))
+else:
+    base_storage = local_hdd_path
+
+PHOTO_DIR = base_storage
+# ORIGINAL_DIR = os.path.join(base_storage, "originals") # Removed as per user request
+
+if not os.path.exists(PHOTO_DIR): os.makedirs(PHOTO_DIR)
+# if not os.path.exists(ORIGINAL_DIR): os.makedirs(ORIGINAL_DIR)
+
+print(f"📂 GALLERY STORAGE PATH: {PHOTO_DIR}")
+# print(f"📂 ARCHIVE PATH (Originals): {ORIGINAL_DIR}")
+
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 if not os.path.exists(STATIC_DIR): os.makedirs(STATIC_DIR)
 
@@ -27,6 +53,7 @@ def get_ip_address():
 ip_addr = get_ip_address()
 gallery_url = f"http://{ip_addr}:5000/gallery"
 print(f"Server IP: {ip_addr}")
+print(f"Storage Path: {PHOTO_DIR}")
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -216,15 +243,19 @@ HTML_TEMPLATE = """
         function loadGallery() {
             fetch('/api/photos')
             .then(r => r.json())
-            .then(files => {
+            .then(data => {
+                // data is now a list of objects {id, url, name, created_at}
+                // or strings? Let's check api_photos impl.
+                // Assuming objects if we change the API.
+                // But wait, THIS HTML uses the API too. 
+                // We need to keep it compatible or update this HTML JS too.
+                // The new API returns objects.
+                
+                const files = data.map(d => d.name || d); // Handle both for safety
                 const gallery = document.getElementById('gallery-container');
                 
-                // Remove deleted
-                // Simplified: Just reload all for now or optimize later. 
-                // For now, let's keep it simple: clear and rebuild or just prepend new?
-                // The original code prepended. Let's simple check.
-                
-                files.reverse().forEach(file => {
+                // Simplified reloading for hybrid support
+                files.forEach(file => {
                      if (!knownFiles.has(file)) {
                         knownFiles.add(file);
                         
@@ -314,10 +345,26 @@ def gallery_view():
 
 @app.route('/api/photos')
 def api_photos():
-    files = [f for f in os.listdir(PHOTO_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
-    # Sort by modification time
-    files.sort(key=lambda x: os.path.getmtime(os.path.join(PHOTO_DIR, x)))
-    return jsonify(files)
+    files = glob.glob(os.path.join(PHOTO_DIR, "*"))
+    files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
+    
+    # Sort files by modification time (newest first)
+    files.sort(key=os.path.getmtime, reverse=True)
+    
+    photo_list = []
+    base_url = request.host_url # e.g., http://localhost:5000/
+    
+    for f in files:
+        filename = os.path.basename(f)
+        photo_list.append({
+            'id': filename,
+            'name': filename,
+            'url': f"{base_url}photos/{filename}",
+            'created_at': os.path.getmtime(f)
+        })
+        
+    return jsonify(photo_list)
+
 
 @app.route('/photos/<path:filename>')
 def photos(filename):

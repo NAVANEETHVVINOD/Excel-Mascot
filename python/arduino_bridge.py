@@ -1,3 +1,4 @@
+
 import serial
 import time
 import threading
@@ -29,8 +30,10 @@ class ArduinoBridge:
                 print(f"❌ Error sending to Arduino: {e}")
                 self.connect() # Try to reconnect?
         else:
-            # print(f"Arduino not connected. Skipped command: {command}")
-            pass
+            print(f"⚠️ Arduino not connected. Skipped command: {command}")
+            # Try to reconnect occasionally?
+            if time.time() % 5 < 0.1: # Don't spam reconnect
+                self.connect()
 
     def close(self):
         if self.serial_conn and self.serial_conn.is_open:

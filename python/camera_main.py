@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from gestures import GestureRecognizer
 from arduino_bridge import ArduinoBridge
 import web_gallery
-from supabase_upload import upload_photo, upload_bytes
+# from supabase_upload import upload_photo, upload_bytes
 import threading
 from roboflow_detector import RoboflowDetector, AnimationType
 from capture_modes import CaptureManager
@@ -46,15 +46,14 @@ def main():
     print("📷 QR Code pointing to Cloud Site.")
 
     # 2. Init Arduino Bridge
-    arduino = ArduinoBridge(port="COM3", baud_rate=9600)
+    arduino = ArduinoBridge(port="COM4", baud_rate=9600)
 
     # 3. Init Hand Detector
     recognizer = GestureRecognizer()
 
-    # 3.5 Init Capture Manager
-    capture_manager = CaptureManager(PHOTO_DIR)
-
-    # 4. Init Roboflow Detector (optional)
+    # Initialize Managers
+    capture_manager = CaptureManager(web_gallery.PHOTO_DIR) # Single Directory for Backup & Upload
+    # Init Roboflow Detector (optional)
     roboflow = None
     if ROBOFLOW_ENABLED:
         roboflow = RoboflowDetector(
@@ -155,68 +154,92 @@ def main():
                 # 3. Capture based on Mode (Cloud-only: don't save to disk)
                 result = None
                 
+                # 3. Capture based on Mode
+                # We handle saving manually for Single/Burst to ensure optimization (1600px)
+                # GIF is complex to encode, so we let CaptureManager handle it.
+                
+                result = None
+                base_ts = int(time.time())
+                
                 if mode == "BURST":
+                    # Don't save individual frames, we want to save optimal collage manually
                     result = capture_manager.capture_burst(cap, filter_type=filter_type, save_to_disk=False)
                 elif mode == "GIF":
-                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=False)
+                    # Let CaptureManager save the GIF directly to PHOTO_DIR
+                    result = capture_manager.capture_gif(cap, filter_type=filter_type, save_to_disk=True)
                 else: # SINGLE
-                    # Read fresh frame for high quality single shot
                     ret, fresh_frame = cap.read()
                     if ret:
+                        # Capture raw frame, we'll resize and save below
                         result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=False)
                 
                 if result:
-                    print(f"✅ Capture complete! (Cloud-only mode)")
+                    print(f"✅ Capture complete! Processing...")
                     
                     # Flash Effect
                     flash = np.ones_like(frame) * 255
                     cv2.imshow("Mascot View", flash)
                     cv2.waitKey(100)
                     
-                    # Prepare Data for Upload
-                    file_bytes = None
-                    filename = ""
-                    base_ts = int(time.time())
+                    # --- UNIFIED STORAGE LOGIC (Backup + Upload) ---
+                    # 1. Prepare the final image (Resize to 1600px if needed)
+                    # 2. Save to E:\mascot (Backup)
+                    # 3. Upload that file to Supabase (Cloud)
+                    
+                    final_path = None
+                    upload_needed = False
                     
                     try:
-                        if mode == "GIF" and result.gif_bytes:
-                            file_bytes = result.gif_bytes
-                            filename = f"mascot_gif_{base_ts}.gif"
-                        elif mode == "BURST" and result.collage_image is not None:
-                            # Encode Collage
-                            success, buffer = cv2.imencode(".jpg", result.collage_image)
-                            if success:
-                                file_bytes = buffer.tobytes()
-                                filename = f"mascot_burst_{base_ts}.jpg"
-                        elif result.images:
-                            # Single Image
-                            success, buffer = cv2.imencode(".jpg", result.images[0])
-                            if success:
-                                file_bytes = buffer.tobytes()
-                                filename = f"mascot_photo_{base_ts}.jpg"
-                        
-                        if file_bytes:
-                            print(f"🚀 Queueing background upload ({len(file_bytes)} bytes)...")
-                            # Async Upload
-                            def background_upload(bytes_data, fname):
-                                try:
-                                    import supabase_upload
-                                    # Create a fresh loop or client if needed, but requests/httpx is thread safe enough for this
-                                    supabase_upload.upload_bytes(bytes_data, fname)
-                                except Exception as err:
-                                    print(f"❌ Background Upload Error: {err}")
+                        if mode == "GIF":
+                            # GIF already saved by CaptureManager
+                            final_path = result.output_path
+                            upload_needed = True
                             
-                            threading.Thread(target=background_upload, args=(file_bytes, filename), daemon=True).start()
                         else:
-                            print("❌ Error: No image data to upload.")
+                            # Handle Single & Burst (Collage)
+                            src_image = None
+                            filename = ""
                             
+                            if mode == "BURST" and result.collage_image is not None:
+                                src_image = result.collage_image
+                                filename = f"mascot_burst_{base_ts}.jpg"
+                            elif result.images:
+                                src_image = result.images[0]
+                                filename = f"mascot_photo_{base_ts}.jpg"
+                                
+                            if src_image is not None:
+                                # Optimize to 1600px (High Quality Web ~1MB)
+                                target_size = 1600
+                                h, w = src_image.shape[:2]
+                                scale = target_size / max(h, w)
+                                
+                                if scale < 1.0:
+                                    new_size = (int(w * scale), int(h * scale))
+                                    final_image = cv2.resize(src_image, new_size, interpolation=cv2.INTER_AREA)
+                                else:
+                                    final_image = src_image
+                                    
+                                # Save to E:\mascot
+                                final_path = os.path.join(web_gallery.PHOTO_DIR, filename)
+                                cv2.imwrite(final_path, final_image, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+                                upload_needed = True
+                        
+                        # --- CLOUD SYNC ---
+                        if upload_needed and final_path and os.path.exists(final_path):
+                            print(f"💾 Backup Saved: {final_path}")
+                            print(f"🚀 Starting Cloud Upload...")
+                            
+                            def background_upload(fpath):
+                                import supabase_upload
+                                # Upload the file (this also triggers the 600 limit cleanup)
+                                supabase_upload.upload_photo(fpath)
+                                
+                            threading.Thread(target=background_upload, args=(final_path,), daemon=True).start()
+                        else:
+                            print("❌ Error: No file created to upload.")
+
                     except Exception as e:
-                         print(f"❌ Processing Error: {e}")
-                else:
-                    print("❌ Capture Failed")
-                
-            else:
-                pass
+                        print(f"❌ Storage/Upload Error: {e}")
 
         # Send Command (Non-Blocking)
         if current_command != "PHOTO_TRIGGER" and current_command != "NORMAL":
@@ -225,8 +248,15 @@ def main():
                 last_command = current_command
                 command_resend_timer = time.time()
         
+        # Force reset last_command if we just triggered a photo, so next NORMAL sends correctly
+        if current_command == "PHOTO_TRIGGER":
+             last_command = "PHOTO_TRIGGER" 
+
         if current_command == "NORMAL":
-             last_command = "NORMAL"
+             # Only send NORMAL if we weren't already normal
+             if last_command != "NORMAL":
+                 arduino.send_command("NORMAL")
+                 last_command = "NORMAL"
 
         # Overlay Info
         display_frame = frame.copy()
