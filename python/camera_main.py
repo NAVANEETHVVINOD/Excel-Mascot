@@ -138,6 +138,9 @@ def main():
     while True:
         ret, frame = cap.read()
         if not ret: continue
+        
+        # Mirror the frame horizontally for selfie-style view
+        frame = cv2.flip(frame, 1)
 
         # Filter Preview?
         # Maybe show the raw frame for mirror, but apply filter on save?
@@ -222,6 +225,8 @@ def main():
                 else: # SINGLE
                     ret, fresh_frame = cap.read()
                     if ret:
+                        # Mirror the fresh frame too
+                        fresh_frame = cv2.flip(fresh_frame, 1)
                         # Capture raw frame, we'll resize and save below
                         result = capture_manager.capture_single(fresh_frame, filter_type=filter_type, save_to_disk=False)
                 

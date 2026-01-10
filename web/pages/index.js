@@ -156,10 +156,23 @@ export default function Gallery() {
         }, 300);
     };
 
-    // REMOVE BROKEN IMAGES (Black Cards)
-    const handleImageError = (id) => {
-        console.warn(`Image load failed for ID: ${id}. Removing from display.`);
+    // REMOVE BROKEN IMAGES (Black Cards) and clean up orphaned DB records
+    const handleImageError = async (id) => {
+        console.warn(`Image load failed for ID: ${id}. Removing from display and database.`);
+        
+        // Remove from local state immediately
         setAllPhotos(prev => prev.filter(photo => photo.id !== id));
+        
+        // Also delete the orphaned record from database (async, don't wait)
+        try {
+            await supabase
+                .from('photos')
+                .delete()
+                .eq('id', id);
+            console.log(`🗑️ Cleaned up orphaned DB record: ${id}`);
+        } catch (err) {
+            console.error(`Failed to clean up orphaned record ${id}:`, err);
+        }
     };
 
     async function syncStatus() {
@@ -300,7 +313,7 @@ export default function Gallery() {
                 <meta name="description" content="Excel Techfest 2025 Mascot Photo Booth Gallery" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
                 <meta name="theme-color" content="#FFB800" />
-                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
                 <link rel="manifest" href="/manifest.json" />
                 <link rel="icon" type="image/webp" href="/logo.webp" />

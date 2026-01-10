@@ -137,6 +137,8 @@ class CaptureManager:
             
             ret, frame = cap.read()
             if ret:
+                # Mirror the frame for selfie-style
+                frame = cv2.flip(frame, 1)
                 timestamp = time.time()
                 filtered = apply_filter(frame, filter_type)
                 images.append(filtered)
@@ -214,6 +216,8 @@ class CaptureManager:
         for i in range(frames_count):
             ret, frame = cap.read()
             if ret:
+                # Mirror the frame for selfie-style
+                frame = cv2.flip(frame, 1)
                 timestamp = time.time()
                 
                 # Create display with recording indicator (before filter for speed)
@@ -255,6 +259,8 @@ class CaptureManager:
                 while (time.time() - wait_start) < (interval_ms / 1000.0):
                     ret, preview = cap.read()
                     if ret:
+                        # Mirror the preview
+                        preview = cv2.flip(preview, 1)
                         # Show preview with waiting indicator
                         h, w = preview.shape[:2]
                         cv2.circle(preview, (30, 30), 12, (0, 0, 255), -1)
@@ -268,6 +274,7 @@ class CaptureManager:
         # Show "Processing..." message
         ret, final_frame = cap.read()
         if ret:
+            final_frame = cv2.flip(final_frame, 1)
             h, w = final_frame.shape[:2]
             overlay = final_frame.copy()
             cv2.rectangle(overlay, (w//4, h//2-30), (3*w//4, h//2+30), (0, 0, 0), -1)
@@ -364,6 +371,8 @@ class CaptureManager:
             while time.time() - start < 1.0:
                 ret, frame = cap.read()
                 if ret:
+                    # Mirror the frame for selfie-style
+                    frame = cv2.flip(frame, 1)
                     display = frame.copy()
                     
                     # Draw countdown number
