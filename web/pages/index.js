@@ -56,7 +56,15 @@ export default function Gallery() {
                 })
                 .subscribe();
 
-            return () => supabase.removeChannel(subscription);
+            // Also poll every 5 seconds as fallback (in case realtime isn't enabled)
+            const pollInterval = setInterval(() => {
+                loadPhotos(true, false);
+            }, 5000);
+
+            return () => {
+                supabase.removeChannel(subscription);
+                clearInterval(pollInterval);
+            };
         }
     }, []);
 
