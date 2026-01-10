@@ -19,8 +19,7 @@ def cleanup_storage(limit=600):
     """
     try:
         # Fetch all photos sorted by Time (Oldest -> Newest)
-        # We don't use 'id' as it might not be primary or reliable. Filename is our key.
-        resp = supabase.table("photos").select("filename, image_url, created_at").order("created_at", desc=False).execute()
+        resp = supabase.table("photos").select("id, image_url, created_at").order("created_at", desc=False).execute()
         photos = resp.data
         
         count = len(photos)
@@ -31,7 +30,11 @@ def cleanup_storage(limit=600):
             for i in range(extra):
                 old = photos[i]
                 
-                fname = old.get("filename")
+                # Extract filename from URL
+                url = old.get("image_url", "")
+                fname = url.split("/")[-1] if url else None
+                record_id = old.get("id")
+                
                 if fname:
                     # 1. Delete from Storage
                     try:
@@ -39,9 +42,9 @@ def cleanup_storage(limit=600):
                     except Exception as stor_err:
                         print(f"⚠️ Storage delete error for {fname}: {stor_err}")
 
-                    # 2. Delete from DB (Match by filename)
-                    # Use filename instead of id since id crashed previously
-                    supabase.table("photos").delete().eq("filename", fname).execute()
+                    # 2. Delete from DB by ID
+                    if record_id:
+                        supabase.table("photos").delete().eq("id", record_id).execute()
                     
                     print(f"🗑️ Deleted Old Photo: {fname}")
                 
@@ -80,9 +83,11 @@ def upload_photo(local_path, metadata=None):
             
             public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
             
-            data = {"image_url": public_url, "filename": storage_path}
-            if metadata: 
-                data.update(metadata)
+            # Only insert image_url and created_at (no filename column)
+            data = {
+                "image_url": public_url,
+                "created_at": datetime.utcnow().isoformat() + '+00:00'
+            }
 
             supabase.table("photos").insert(data).execute()
             
@@ -131,9 +136,11 @@ def upload_bytes(file_bytes, filename, metadata=None):
             
             public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
             
-            data = {"image_url": public_url, "filename": storage_path}
-            if metadata: 
-                data.update(metadata)
+            # Only insert image_url and created_at (no filename column)
+            data = {
+                "image_url": public_url,
+                "created_at": datetime.utcnow().isoformat() + '+00:00'
+            }
 
             supabase.table("photos").insert(data).execute()
             
