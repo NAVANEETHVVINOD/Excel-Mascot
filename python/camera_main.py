@@ -14,7 +14,7 @@ import web_gallery
 import threading
 from roboflow_detector import RoboflowDetector, AnimationType
 from capture_modes import CaptureManager
-from filters import get_filter_from_string
+from filters import get_filter_from_string, apply_filter, FilterType
 from remote_control import start_remote_thread
 from settings import settings
 
@@ -27,6 +27,44 @@ ROBOFLOW_API_KEY = os.environ.get("ROBOFLOW_API_KEY", None)
 ROBOFLOW_MODEL_ID = os.environ.get("ROBOFLOW_MODEL_ID", None)
 ROBOFLOW_CONFIDENCE = float(os.environ.get("ROBOFLOW_CONFIDENCE", "0.8"))
 ROBOFLOW_ENABLED = bool(ROBOFLOW_API_KEY and ROBOFLOW_MODEL_ID)
+
+
+def apply_retro_preview(image):
+    """
+    Apply RETRO filter color grading for live preview (without polaroid frame).
+    This is a simplified version for real-time display.
+    """
+    result = image.copy()
+    
+    # Apply warm sepia-like tone
+    sepia_filter = np.array([
+        [0.272, 0.534, 0.131],
+        [0.349, 0.686, 0.168],
+        [0.393, 0.769, 0.189]
+    ])
+    
+    # Apply sepia transform
+    sepia = cv2.transform(result, sepia_filter)
+    sepia = np.clip(sepia, 0, 255).astype(np.uint8)
+    
+    # Blend with original for less intense effect
+    result = cv2.addWeighted(result, 0.35, sepia, 0.65, 0)
+    
+    # Matte blacks - lift shadows
+    lab = cv2.cvtColor(result, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    l = np.clip(l.astype(np.float32) + 15, 0, 255).astype(np.uint8)
+    lab = cv2.merge([l, a, b])
+    result = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    
+    # Add warm cast
+    b_ch, g_ch, r_ch = cv2.split(result)
+    r_ch = cv2.convertScaleAbs(r_ch, alpha=1.08, beta=8)
+    g_ch = cv2.convertScaleAbs(g_ch, alpha=1.02, beta=3)
+    b_ch = cv2.convertScaleAbs(b_ch, alpha=0.95, beta=-5)
+    result = cv2.merge([b_ch, g_ch, r_ch])
+    
+    return result
 
 
 
@@ -81,7 +119,21 @@ def main():
     last_command = "NORMAL"
     command_resend_timer = time.time()
     
+    # Track filter/mode changes for visual feedback
+    last_filter = web_gallery.current_filter
+    last_mode = web_gallery.current_mode
+    filter_change_time = 0
+    mode_change_time = 0
+    
+    # Available filters and modes
+    FILTERS = ["NORMAL", "GLITCH", "CYBERPUNK", "PASTEL", "BW", "POLAROID"]
+    MODES = ["SINGLE", "BURST", "GIF"]
+    
     print("📷 Camera active.")
+    print("🎮 Keyboard Controls:")
+    print("   1-6: Change Filter (1=NORMAL, 2=GLITCH, 3=NEON, 4=DREAMY, 5=NOIR, 6=RETRO)")
+    print("   7-9: Change Mode (7=SINGLE, 8=BURST, 9=GIF)")
+    print("   Q: Quit | ESC: Toggle Fullscreen | M: Minimize")
 
     while True:
         ret, frame = cap.read()
@@ -261,6 +313,37 @@ def main():
         # Overlay Info
         display_frame = frame.copy()
         
+        # ===== LIVE FILTER PREVIEW =====
+        # Apply the selected filter to the live preview so users can see how they'll look
+        current_filter_name = web_gallery.current_filter
+        if current_filter_name and current_filter_name != "NORMAL":
+            filter_type = get_filter_from_string(current_filter_name)
+            if filter_type != FilterType.NONE:
+                try:
+                    # Apply filter to the display frame for live preview
+                    # Skip RETRO/POLAROID frame for preview (it adds borders)
+                    if filter_type == FilterType.RETRO:
+                        # For RETRO, apply the color grading but skip the polaroid frame
+                        display_frame = apply_retro_preview(display_frame)
+                    else:
+                        display_frame = apply_filter(display_frame, filter_type)
+                except Exception as e:
+                    # If filter fails, just use original frame
+                    pass
+        
+        # Check for filter/mode changes and show notification
+        current_time = time.time()
+        
+        if web_gallery.current_filter != last_filter:
+            last_filter = web_gallery.current_filter
+            filter_change_time = current_time
+            print(f"🎨 Filter changed to: {last_filter}")
+            
+        if web_gallery.current_mode != last_mode:
+            last_mode = web_gallery.current_mode
+            mode_change_time = current_time
+            print(f"📸 Mode changed to: {last_mode}")
+        
         # Draw Roboflow detections if any
         if roboflow and roboflow_detections:
             display_frame = roboflow.draw_detections(display_frame, roboflow_detections)
@@ -279,21 +362,134 @@ def main():
         cv2.putText(display_frame, filter_text, (15, 50), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
         
+        # Show "LIVE PREVIEW" indicator when filter is active
+        if web_gallery.current_filter and web_gallery.current_filter != "NORMAL":
+            preview_text = "LIVE PREVIEW"
+            cv2.putText(display_frame, preview_text, (display_frame.shape[1] // 2 - 80, 45), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        
+        # Show BIG notification when filter/mode changes (visible for 2 seconds)
+        notification_duration = 2.0
+        
+        if current_time - filter_change_time < notification_duration:
+            # Big filter change notification
+            notif_text = f"FILTER: {web_gallery.current_filter}"
+            text_size = cv2.getTextSize(notif_text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 3)[0]
+            text_x = (display_frame.shape[1] - text_size[0]) // 2
+            text_y = display_frame.shape[0] // 2 - 30
+            
+            # Draw background box
+            cv2.rectangle(display_frame, 
+                         (text_x - 20, text_y - 50), 
+                         (text_x + text_size[0] + 20, text_y + 20), 
+                         (0, 0, 0), -1)
+            cv2.rectangle(display_frame, 
+                         (text_x - 20, text_y - 50), 
+                         (text_x + text_size[0] + 20, text_y + 20), 
+                         (0, 215, 255), 3)
+            
+            cv2.putText(display_frame, notif_text, (text_x, text_y), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 215, 255), 3)
+        
+        if current_time - mode_change_time < notification_duration:
+            # Big mode change notification
+            notif_text = f"MODE: {web_gallery.current_mode}"
+            text_size = cv2.getTextSize(notif_text, cv2.FONT_HERSHEY_SIMPLEX, 1.5, 3)[0]
+            text_x = (display_frame.shape[1] - text_size[0]) // 2
+            text_y = display_frame.shape[0] // 2 + 50
+            
+            # Draw background box
+            cv2.rectangle(display_frame, 
+                         (text_x - 20, text_y - 50), 
+                         (text_x + text_size[0] + 20, text_y + 20), 
+                         (0, 0, 0), -1)
+            cv2.rectangle(display_frame, 
+                         (text_x - 20, text_y - 50), 
+                         (text_x + text_size[0] + 20, text_y + 20), 
+                         (0, 255, 0), 3)
+            
+            cv2.putText(display_frame, notif_text, (text_x, text_y), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+        
         # Show controls hint
-        controls_text = "Q:Quit | ESC:Fullscreen | M:Minimize"
-        cv2.putText(display_frame, controls_text, (display_frame.shape[1] - 350, 25), 
+        controls_text = "1-6:Filter | 7-9:Mode | Q:Quit | ESC:Fullscreen"
+        cv2.putText(display_frame, controls_text, (display_frame.shape[1] - 450, 25), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
+        
+        # Draw Filter/Mode Selection Panel at bottom
+        panel_height = 80
+        panel_y = display_frame.shape[0] - panel_height
+        
+        # Semi-transparent panel background
+        overlay = display_frame.copy()
+        cv2.rectangle(overlay, (0, panel_y), (display_frame.shape[1], display_frame.shape[0]), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.7, display_frame, 0.3, 0, display_frame)
+        
+        # Draw Filter buttons (top row of panel) - smaller buttons to fit all 6
+        filter_y = panel_y + 25
+        filter_start_x = 10
+        filter_btn_width = 75  # Smaller width
+        filter_spacing = 5     # Less spacing
+        
+        cv2.putText(display_frame, "FILTER:", (filter_start_x, filter_y), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (150, 150, 150), 1)
+        
+        for i, f in enumerate(FILTERS):
+            btn_x = filter_start_x + 60 + i * (filter_btn_width + filter_spacing)
+            is_active = (web_gallery.current_filter == f)
+            
+            # Button background
+            color = (0, 215, 255) if is_active else (60, 60, 60)
+            text_color = (0, 0, 0) if is_active else (200, 200, 200)
+            
+            cv2.rectangle(display_frame, (btn_x, filter_y - 16), 
+                         (btn_x + filter_btn_width, filter_y + 4), color, -1)
+            cv2.rectangle(display_frame, (btn_x, filter_y - 16), 
+                         (btn_x + filter_btn_width, filter_y + 4), (100, 100, 100), 1)
+            
+            # Button text with number key hint - shorter labels
+            short_name = f[:5] if len(f) > 5 else f
+            label = f"{i+1}:{short_name}"
+            cv2.putText(display_frame, label, (btn_x + 3, filter_y - 1), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.35, text_color, 1)
+        
+        # Draw Mode buttons (bottom row of panel)
+        mode_y = panel_y + 55
+        mode_start_x = 10
+        mode_btn_width = 85
+        mode_spacing = 10
+        
+        cv2.putText(display_frame, "MODE:", (mode_start_x, mode_y), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (150, 150, 150), 1)
+        
+        for i, m in enumerate(MODES):
+            btn_x = mode_start_x + 60 + i * (mode_btn_width + mode_spacing)
+            is_active = (web_gallery.current_mode == m)
+            
+            # Button background
+            color = (0, 255, 0) if is_active else (60, 60, 60)
+            text_color = (0, 0, 0) if is_active else (200, 200, 200)
+            
+            cv2.rectangle(display_frame, (btn_x, mode_y - 16), 
+                         (btn_x + mode_btn_width, mode_y + 4), color, -1)
+            cv2.rectangle(display_frame, (btn_x, mode_y - 16), 
+                         (btn_x + mode_btn_width, mode_y + 4), (100, 100, 100), 1)
+            
+            # Button text with number key hint (7, 8, 9)
+            label = f"{i+7}:{m}"
+            cv2.putText(display_frame, label, (btn_x + 5, mode_y - 1), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, text_color, 1)
+        
+        # Thumbs up hint (moved to right side of panel)
+        cv2.putText(display_frame, "THUMBS UP to capture!", 
+                    (display_frame.shape[1] - 230, mode_y - 5), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # Show Roboflow status
         if roboflow and roboflow.is_available():
             status = f"AI: {len(roboflow_detections)} detections"
             cv2.putText(display_frame, status, (display_frame.shape[1] - 200, 50), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-        
-        # Show gesture hint at bottom
-        cv2.putText(display_frame, "Show THUMBS UP to capture!", 
-                    (display_frame.shape[1]//2 - 150, display_frame.shape[0] - 20), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
         cv2.imshow("Mascot View", display_frame)
         
@@ -318,6 +514,57 @@ def main():
             if hwnd:
                 ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
                 print("📺 Window minimized")
+        # Filter selection (1-6 keys)
+        elif key == ord('1'):
+            web_gallery.current_filter = "NORMAL"
+            filter_change_time = time.time()
+            print("🎨 Filter: NORMAL")
+        elif key == ord('2'):
+            web_gallery.current_filter = "GLITCH"
+            filter_change_time = time.time()
+            print("🎨 Filter: GLITCH")
+        elif key == ord('3'):
+            web_gallery.current_filter = "CYBERPUNK"
+            filter_change_time = time.time()
+            print("🎨 Filter: CYBERPUNK (NEON)")
+        elif key == ord('4'):
+            web_gallery.current_filter = "PASTEL"
+            filter_change_time = time.time()
+            print("🎨 Filter: PASTEL (DREAMY)")
+        elif key == ord('5'):
+            web_gallery.current_filter = "BW"
+            filter_change_time = time.time()
+            print("🎨 Filter: BW (NOIR)")
+        elif key == ord('6'):
+            web_gallery.current_filter = "POLAROID"
+            filter_change_time = time.time()
+            print("🎨 Filter: POLAROID (RETRO)")
+        # Mode selection (F1-F3 keys) - OpenCV key codes
+        elif key == 190:  # F1
+            web_gallery.current_mode = "SINGLE"
+            mode_change_time = time.time()
+            print("📸 Mode: SINGLE")
+        elif key == 191:  # F2
+            web_gallery.current_mode = "BURST"
+            mode_change_time = time.time()
+            print("📸 Mode: BURST")
+        elif key == 192:  # F3
+            web_gallery.current_mode = "GIF"
+            mode_change_time = time.time()
+            print("📸 Mode: GIF")
+        # Alternative: Use 7, 8, 9 for modes (easier than F-keys)
+        elif key == ord('7'):
+            web_gallery.current_mode = "SINGLE"
+            mode_change_time = time.time()
+            print("📸 Mode: SINGLE")
+        elif key == ord('8'):
+            web_gallery.current_mode = "BURST"
+            mode_change_time = time.time()
+            print("📸 Mode: BURST")
+        elif key == ord('9'):
+            web_gallery.current_mode = "GIF"
+            mode_change_time = time.time()
+            print("📸 Mode: GIF")
 
     cap.release()
     cv2.destroyAllWindows()

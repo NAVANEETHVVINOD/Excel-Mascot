@@ -1,0 +1,86 @@
+[
+  {
+    "filepath": "F:\\kannan\\projects\\mascot\\mascot_photobooth\\photos\\mascot_photo_1767930121.jpg",
+    "timestamp": 1767930124.26893,
+    "metadata": {},
+    "status": "failed_permanently",
+    "retries": 6
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_photo_1767953037.jpg",
+    "timestamp": 1767953075.756908,
+    "metadata": {},
+    "status": "failed_permanently",
+    "retries": 6
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_photo_1768026170.jpg",
+    "timestamp": 1768026179.5980468,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_photo_1768026892.jpg",
+    "timestamp": 1768026901.1181202,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_photo_1768026995.jpg",
+    "timestamp": 1768027003.8376048,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_photo_1768027034.jpg",
+    "timestamp": 1768027039.0673096,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_burst_1768027068.jpg",
+    "timestamp": 1768027091.7587152,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_burst_1768027090.jpg",
+    "timestamp": 1768027110.9148457,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_burst_1768027111.jpg",
+    "timestamp": 1768027132.8608053,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_burst_1768027131.jpg",
+    "timestamp": 1768027151.705461,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_burst_1768027150.jpg",
+    "timestamp": 1768027169.9988747,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  },
+  {
+    "filepath": "E:\\mascot\\mascot_burst_1768027224.jpg",
+    "timestamp": 1768027248.1591575,
+    "metadata": {},
+    "status": "pending",
+    "retries": 0
+  }
+]

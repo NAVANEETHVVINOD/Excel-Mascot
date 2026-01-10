@@ -80,7 +80,7 @@ def upload_photo(local_path, metadata=None):
             
             public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
             
-            data = {"image_url": public_url}
+            data = {"image_url": public_url, "filename": storage_path}
             if metadata: 
                 data.update(metadata)
 
@@ -131,7 +131,7 @@ def upload_bytes(file_bytes, filename, metadata=None):
             
             public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{storage_path}"
             
-            data = {"image_url": public_url}
+            data = {"image_url": public_url, "filename": storage_path}
             if metadata: 
                 data.update(metadata)
 

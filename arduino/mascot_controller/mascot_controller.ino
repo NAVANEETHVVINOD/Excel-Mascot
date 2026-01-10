@@ -5,6 +5,9 @@ const int trigPin = 9;
 const int echoPin = 10;
 long duration;
 float distance;
+float lastValidDistance = 999;  // Store last valid reading for smoothing
+int invalidReadingCount = 0;    // Count consecutive invalid readings
+const int MAX_INVALID_READINGS = 5; // How many 999s before switching to idle
 
 // ---------- LED STRIPS (2 EYES ONLY) ----------
 // LEFT EYE - Pin 7
@@ -199,29 +202,75 @@ void loop() {
      }
   }
 
-  // 2. Ultrasonic Logic
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  duration = pulseIn(echoPin, HIGH, 30000); 
-
-  if (duration == 0) distance = 999;
-  else distance = (duration * 0.0343) / 2.0;
+  // 2. Ultrasonic Logic - IMPROVED with multiple readings
+  long readings[3];
+  int validCount = 0;
   
-  // DEBUG PRINT
-  Serial.print("Dist: "); Serial.println(distance);
+  for(int r = 0; r < 3; r++) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(5);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(15);
+    digitalWrite(trigPin, LOW);
+    
+    readings[r] = pulseIn(echoPin, HIGH, 50000); // Increased timeout to 50ms
+    delay(10);
+  }
+  
+  // Find median of valid readings
+  long validReadings[3];
+  for(int r = 0; r < 3; r++) {
+    if(readings[r] > 0 && readings[r] < 25000) {
+      validReadings[validCount++] = readings[r];
+    }
+  }
+  
+  if(validCount > 0) {
+    // Use first valid reading (or could sort for median)
+    duration = validReadings[0];
+    if(validCount >= 2) {
+      // Average of valid readings
+      long sum = 0;
+      for(int i = 0; i < validCount; i++) sum += validReadings[i];
+      duration = sum / validCount;
+    }
+  } else {
+    duration = 0;
+  }
+
+  float rawDistance;
+  if (duration == 0) rawDistance = 999;
+  else rawDistance = (duration * 0.0343) / 2.0;
+  
+  // SMOOTHING: Handle noisy 999 readings
+  if (rawDistance >= 900) {
+    // Got a timeout/invalid reading
+    invalidReadingCount++;
+    if (invalidReadingCount < MAX_INVALID_READINGS) {
+      // Use last valid reading instead of 999
+      distance = lastValidDistance;
+      Serial.print("Dist: "); Serial.print(distance); Serial.println(" (smoothed)");
+    } else {
+      // Too many invalid readings, actually far away
+      distance = 999;
+      Serial.print("Dist: "); Serial.println(distance);
+    }
+  } else {
+    // Got a valid reading
+    distance = rawDistance;
+    lastValidDistance = distance;  // Save for smoothing
+    invalidReadingCount = 0;       // Reset counter
+    Serial.print("Dist: "); Serial.println(distance);
+  }
 
   // DISTANCE ZONES:
-  // 0-50cm = Very close = LOVE + WAVE
-  // 50-120cm = Medium = SUS (suspicious)
-  // >120cm = Far = NORMAL/IDLE
+  // 0-150cm = Very close = LOVE + WAVE
+  // 150-350cm = Medium = SUS (suspicious)
+  // >350cm = Far = NORMAL/IDLE
 
-  // Very close - wave and show love
-  if (distance > 0 && distance < 50) {
-    Serial.println(">>> VERY CLOSE! LOVE + WAVE! <<<");
+  // Very close - wave and show love (0-150cm)
+  if (distance > 0 && distance <= 150) {
+    Serial.println(">>> LOVE MODE (0-150cm) <<<");
     emotionLove();
     
     // Only wave if not waved recently (prevent spam)
@@ -232,9 +281,9 @@ void loop() {
     
     lastIdleTime = millis();
   }
-  // Medium distance - suspicious look
-  else if (distance >= 50 && distance < 120) {
-    Serial.println(">>> MEDIUM DISTANCE - SUS MODE <<<");
+  // Medium distance - suspicious look (150-350cm)
+  else if (distance > 150 && distance <= 350) {
+    Serial.println(">>> SUS MODE (150-350cm) <<<");
     emotionSus();
     lastIdleTime = millis();
   }

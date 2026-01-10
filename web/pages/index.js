@@ -80,14 +80,33 @@ export default function Gallery() {
 
             if (forceLocal) {
                 // --- LOCAL SAVED FILES ---
-                const res = await fetch(`${LOCAL_API_BASE}/api/photos?t=${Date.now()}`);
-                const data = await res.json();
-                formatted = data.map(p => ({
-                    id: p.id,
-                    image_url: p.url,
-                    created_at: new Date(p.created_at * 1000).toISOString(),
-                    isNew: false
-                }));
+                try {
+                    const res = await fetch(`${LOCAL_API_BASE}/api/photos?t=${Date.now()}`);
+                    if (!res.ok) throw new Error('Local server not available');
+                    const data = await res.json();
+                    formatted = data.map(p => ({
+                        id: p.id,
+                        image_url: p.url,
+                        created_at: new Date(p.created_at * 1000).toISOString(),
+                        isNew: false
+                    }));
+                } catch (localErr) {
+                    // Local server not running, fall back to Supabase
+                    console.log('Local server unavailable, using Supabase...');
+                    const { data, error } = await supabase
+                        .from('photos')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+
+                    if (error) throw error;
+
+                    formatted = data.map(p => ({
+                        id: p.id,
+                        image_url: p.image_url,
+                        created_at: p.created_at,
+                        isNew: false
+                    }));
+                }
             } else {
                 // --- SUPABASE CLOUD ---
                 const { data, error } = await supabase
@@ -99,8 +118,6 @@ export default function Gallery() {
 
                 formatted = data.map(p => ({
                     id: p.id,
-                    // Handle case where image_url might require signing or direct public link
-                    // Assuming public bucket for now
                     image_url: p.image_url,
                     created_at: p.created_at,
                     isNew: false
@@ -130,17 +147,34 @@ export default function Gallery() {
 
     async function syncStatus() {
         try {
-            const res = await fetch(`${LOCAL_API_BASE}/get_filter`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+            
+            const res = await fetch(`${LOCAL_API_BASE}/get_filter`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) return;
             const data = await res.json();
             if (data.filter) setActiveFilter(data.filter);
             if (data.mode) setActiveMode(data.mode);
-        } catch (e) { /* ignore offline errors */ }
+        } catch (e) { 
+            // Silently ignore - local server not running
+        }
     }
 
     const setMode = async (mode) => {
         setActiveMode(mode);
         try {
+            // Always send to local Flask server if running locally
             if (isLocal) await fetch(`${LOCAL_API_BASE}/set_mode/${mode}`);
+            
+            // ALWAYS send Supabase broadcast (for remote control from cloud)
+            await supabase.channel('booth_control').send({
+                type: 'broadcast',
+                event: 'command',
+                payload: { type: 'SET_MODE', mode: mode }
+            });
+            console.log(`📡 Broadcast: SET_MODE ${mode}`);
         } catch (e) { console.error(e); }
     };
 
@@ -148,7 +182,16 @@ export default function Gallery() {
         const newFilter = (activeFilter === filter) ? 'NORMAL' : filter;
         setActiveFilter(newFilter);
         try {
+            // Always send to local Flask server if running locally
             if (isLocal) await fetch(`${LOCAL_API_BASE}/set_filter/${newFilter}`);
+            
+            // ALWAYS send Supabase broadcast (for remote control from cloud)
+            await supabase.channel('booth_control').send({
+                type: 'broadcast',
+                event: 'command',
+                payload: { type: 'SET_FILTER', filter: newFilter }
+            });
+            console.log(`📡 Broadcast: SET_FILTER ${newFilter}`);
         } catch (e) { console.error(e); }
     };
 
@@ -171,6 +214,65 @@ export default function Gallery() {
             window.URL.revokeObjectURL(blobUrl);
         } catch (err) {
             window.open(url, '_blank');
+        }
+    };
+
+    const deletePhoto = async (photoId, imageUrl) => {
+        if (!confirm('Are you sure you want to delete this photo?')) return;
+        
+        try {
+            let deleteSuccess = false;
+            
+            // Extract filename from URL
+            // Supabase URL format: https://xxx.supabase.co/storage/v1/object/public/photos/filename.jpg
+            // Local URL format: http://localhost:5000/photos/filename.jpg
+            const urlParts = imageUrl.split('/');
+            const filename = urlParts[urlParts.length - 1];
+            
+            // Try local server first if running locally
+            if (isLocal) {
+                try {
+                    const res = await fetch(`${LOCAL_API_BASE}/delete/${filename}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        deleteSuccess = true;
+                    }
+                } catch (localErr) {
+                    // Local server not available, will try Supabase
+                    console.log('Local server unavailable, using Supabase for delete...');
+                }
+            }
+            
+            // If local delete didn't work or not local, use Supabase
+            if (!deleteSuccess) {
+                // 1. Delete from Storage bucket
+                const { error: storageError } = await supabase.storage
+                    .from('photos')
+                    .remove([filename]);
+                
+                if (storageError) {
+                    console.error('Storage delete error:', storageError);
+                    // Continue anyway - file might already be deleted or have different name
+                }
+                
+                // 2. Delete from Database by ID (most reliable)
+                const { error: dbError } = await supabase
+                    .from('photos')
+                    .delete()
+                    .eq('id', photoId);
+                
+                if (dbError) {
+                    console.error('Database delete error:', dbError);
+                    throw dbError;
+                }
+            }
+            
+            // Remove from local state
+            setPhotos(prev => prev.filter(p => p.id !== photoId));
+            console.log('🗑️ Photo deleted successfully');
+            
+        } catch (err) {
+            console.error('Failed to delete photo:', err);
+            alert('Failed to delete photo. Please try again.');
         }
     };
 
@@ -310,7 +412,7 @@ export default function Gallery() {
                                         />
                                         <div className="photo-overlay">
                                             <button
-                                                className="download-btn"
+                                                className="action-btn download-btn"
                                                 onClick={() => downloadPhoto(photo.image_url, `excel_${photo.id}.jpg`)}
                                                 aria-label="Download"
                                             >
@@ -318,6 +420,18 @@ export default function Gallery() {
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                                     <polyline points="7 10 12 15 17 10" />
                                                     <line x1="12" y1="15" x2="12" y2="3" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                className="action-btn delete-btn"
+                                                onClick={() => deletePhoto(photo.id, photo.image_url)}
+                                                aria-label="Delete"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <polyline points="3 6 5 6 21 6" />
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                    <line x1="10" y1="11" x2="10" y2="17" />
+                                                    <line x1="14" y1="11" x2="14" y2="17" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -736,6 +850,7 @@ export default function Gallery() {
                     display: flex;
                     align-items: flex-end;
                     justify-content: center;
+                    gap: 12px;
                     padding-bottom: 20px;
                 }
 
@@ -743,10 +858,9 @@ export default function Gallery() {
                     opacity: 1;
                 }
 
-                .download-btn {
-                    width: 48px;
-                    height: 48px;
-                    background: linear-gradient(135deg, var(--orange), var(--gold));
+                .action-btn {
+                    width: 44px;
+                    height: 44px;
                     border: none;
                     border-radius: 50%;
                     color: #000;
@@ -756,11 +870,20 @@ export default function Gallery() {
                     justify-content: center;
                     transform: translateY(20px);
                     transition: all 0.3s ease;
-                    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.5);
                 }
 
-                .photo-card:hover .download-btn {
+                .action-btn svg {
+                    width: 20px;
+                    height: 20px;
+                }
+
+                .photo-card:hover .action-btn {
                     transform: translateY(0);
+                }
+
+                .download-btn {
+                    background: linear-gradient(135deg, var(--orange), var(--gold));
+                    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.5);
                 }
 
                 .download-btn:hover {
@@ -768,9 +891,14 @@ export default function Gallery() {
                     box-shadow: 0 8px 30px rgba(255, 140, 0, 0.7);
                 }
 
-                .download-btn svg {
-                    width: 22px;
-                    height: 22px;
+                .delete-btn {
+                    background: linear-gradient(135deg, #ff4444, #cc0000);
+                    box-shadow: 0 4px 20px rgba(255, 0, 0, 0.4);
+                }
+
+                .delete-btn:hover {
+                    transform: scale(1.15) translateY(0) !important;
+                    box-shadow: 0 8px 30px rgba(255, 0, 0, 0.6);
                 }
 
                 /* Polaroid Caption */
@@ -972,12 +1100,12 @@ export default function Gallery() {
                         right: -4px;
                     }
 
-                    .download-btn {
+                    .download-btn, .delete-btn {
                         width: 36px;
                         height: 36px;
                     }
 
-                    .download-btn svg {
+                    .download-btn svg, .delete-btn svg {
                         width: 16px;
                         height: 16px;
                     }
@@ -1050,12 +1178,12 @@ export default function Gallery() {
                         right: -3px;
                     }
 
-                    .download-btn {
+                    .download-btn, .delete-btn {
                         width: 32px;
                         height: 32px;
                     }
 
-                    .download-btn svg {
+                    .download-btn svg, .delete-btn svg {
                         width: 14px;
                         height: 14px;
                     }
