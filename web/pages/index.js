@@ -3,15 +3,23 @@ import { useEffect, useState, useRef } from "react";
 import Head from "next/head";
 
 const LOCAL_API_BASE = "http://localhost:5000";
+const PHOTOS_PER_PAGE = 25;
 
 export default function Gallery() {
-    const [photos, setPhotos] = useState([]);
+    const [allPhotos, setAllPhotos] = useState([]);  // All photos from DB
+    const [displayCount, setDisplayCount] = useState(PHOTOS_PER_PAGE);  // How many to show
     const [activeMode, setActiveMode] = useState('SINGLE');
     const [activeFilter, setActiveFilter] = useState('NORMAL');
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [visiblePhotos, setVisiblePhotos] = useState({});
     const [isLocal, setIsLocal] = useState(false);
     const photoRefs = useRef({});
+    
+    // Get only the photos to display (paginated)
+    const photos = allPhotos.slice(0, displayCount);
+    const hasMore = displayCount < allPhotos.length;
+    const totalPhotos = allPhotos.length;
 
     useEffect(() => {
         // DETECT ENVIRONMENT
@@ -124,7 +132,7 @@ export default function Gallery() {
                 }));
             }
 
-            setPhotos(prev => {
+            setAllPhotos(prev => {
                 const existingIds = new Set(prev.map(p => p.id));
                 const withNewFlag = formatted.map(p => ({
                     ...p,
@@ -139,10 +147,19 @@ export default function Gallery() {
         if (!silent) setLoading(false);
     }
 
+    // Load more photos
+    const loadMore = () => {
+        setLoadingMore(true);
+        setTimeout(() => {
+            setDisplayCount(prev => Math.min(prev + PHOTOS_PER_PAGE, allPhotos.length));
+            setLoadingMore(false);
+        }, 300);
+    };
+
     // REMOVE BROKEN IMAGES (Black Cards)
     const handleImageError = (id) => {
         console.warn(`Image load failed for ID: ${id}. Removing from display.`);
-        setPhotos(prev => prev.filter(photo => photo.id !== id));
+        setAllPhotos(prev => prev.filter(photo => photo.id !== id));
     };
 
     async function syncStatus() {
@@ -267,7 +284,7 @@ export default function Gallery() {
             }
             
             // Remove from local state
-            setPhotos(prev => prev.filter(p => p.id !== photoId));
+            setAllPhotos(prev => prev.filter(p => p.id !== photoId));
             console.log('🗑️ Photo deleted successfully');
             
         } catch (err) {
@@ -367,7 +384,7 @@ export default function Gallery() {
             {/* ===== PHOTO GALLERY ===== */}
             <main className="gallery-section">
                 <h2 className="section-title">CAPTURED MOMENTS</h2>
-                <p className="photo-count">{photos.length} photos</p>
+                <p className="photo-count">Showing {photos.length} of {totalPhotos} photos</p>
 
                 {loading ? (
                     <div className="loading-state">
@@ -384,71 +401,96 @@ export default function Gallery() {
                         <span>Show a thumbs up to capture!</span>
                     </div>
                 ) : (
-                    <div className="photo-grid">
-                        {photos.map((photo, index) => {
-                            const isVisible = visiblePhotos[photo.id];
+                    <>
+                        <div className="photo-grid">
+                            {photos.map((photo, index) => {
+                                const isVisible = visiblePhotos[photo.id];
 
-                            return (
-                                <div
-                                    key={photo.id}
-                                    className={`photo-card ${isVisible ? 'visible' : ''} ${photo.isNew ? 'new' : ''}`}
-                                    ref={el => photoRefs.current[photo.id] = el}
-                                    data-id={photo.id}
-                                    style={{
-                                        animationDelay: `${(index % 6) * 0.1}s`,
-                                        transform: `rotate(${(index % 2 === 0 ? -2 : 2) + (index % 3)}deg)`
-                                    }}
-                                >
-                                    {/* Tape */}
-                                    <div className="tape"></div>
+                                return (
+                                    <div
+                                        key={photo.id}
+                                        className={`photo-card ${isVisible ? 'visible' : ''} ${photo.isNew ? 'new' : ''}`}
+                                        ref={el => photoRefs.current[photo.id] = el}
+                                        data-id={photo.id}
+                                        style={{
+                                            animationDelay: `${(index % 6) * 0.1}s`,
+                                            transform: `rotate(${(index % 2 === 0 ? -2 : 2) + (index % 3)}deg)`
+                                        }}
+                                    >
+                                        {/* Tape */}
+                                        <div className="tape"></div>
 
-                                    {/* Photo Frame */}
-                                    <div className="photo-frame">
-                                        <img
-                                            src={photo.image_url}
-                                            alt={`Photo ${index + 1}`}
-                                            loading="lazy"
-                                            onError={() => handleImageError(photo.id)}
-                                        />
-                                        <div className="photo-overlay">
-                                            <button
-                                                className="action-btn download-btn"
-                                                onClick={() => downloadPhoto(photo.image_url, `excel_${photo.id}.jpg`)}
-                                                aria-label="Download"
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                    <polyline points="7 10 12 15 17 10" />
-                                                    <line x1="12" y1="15" x2="12" y2="3" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                className="action-btn delete-btn"
-                                                onClick={() => deletePhoto(photo.id, photo.image_url)}
-                                                aria-label="Delete"
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <polyline points="3 6 5 6 21 6" />
-                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                                    <line x1="10" y1="11" x2="10" y2="17" />
-                                                    <line x1="14" y1="11" x2="14" y2="17" />
-                                                </svg>
-                                            </button>
+                                        {/* Photo Frame */}
+                                        <div className="photo-frame">
+                                            <img
+                                                src={photo.image_url}
+                                                alt={`Photo ${index + 1}`}
+                                                loading="lazy"
+                                                onError={() => handleImageError(photo.id)}
+                                            />
+                                            <div className="photo-overlay">
+                                                <button
+                                                    className="action-btn download-btn"
+                                                    onClick={() => downloadPhoto(photo.image_url, `excel_${photo.id}.jpg`)}
+                                                    aria-label="Download"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                        <polyline points="7 10 12 15 17 10" />
+                                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    className="action-btn delete-btn"
+                                                    onClick={() => deletePhoto(photo.id, photo.image_url)}
+                                                    aria-label="Delete"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <polyline points="3 6 5 6 21 6" />
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                                        <line x1="10" y1="11" x2="10" y2="17" />
+                                                        <line x1="14" y1="11" x2="14" y2="17" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Polaroid Caption Area */}
-                                    <div className="polaroid-caption">
-                                        <span className="log-id">EXCEL_LOG_{String(index + 1).padStart(2, '0')}</span>
-                                        <span className="photo-date">{formatDate(photo.created_at)}</span>
-                                    </div>
+                                        {/* Polaroid Caption Area */}
+                                        <div className="polaroid-caption">
+                                            <span className="log-id">EXCEL_LOG_{String(index + 1).padStart(2, '0')}</span>
+                                            <span className="photo-date">{formatDate(photo.created_at)}</span>
+                                        </div>
 
-                                    {/* EXCELETED Stamp */}
-                                    <div className="stamp">EXCELETED</div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                        {/* EXCELETED Stamp */}
+                                        <div className="stamp">EXCELETED</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        {/* Load More Button */}
+                        {hasMore && (
+                            <div className="load-more-container">
+                                <button 
+                                    className="load-more-btn"
+                                    onClick={loadMore}
+                                    disabled={loadingMore}
+                                >
+                                    {loadingMore ? (
+                                        <>
+                                            <span className="btn-loader"></span>
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            LOAD MORE
+                                            <span className="remaining-count">({totalPhotos - displayCount} remaining)</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </main>
 
@@ -761,6 +803,53 @@ export default function Gallery() {
                     font-size: 1.2rem;
                     margin-bottom: 40px;
                     letter-spacing: 2px;
+                }
+
+                /* ========== LOAD MORE BUTTON ========== */
+                .load-more-container {
+                    display: flex;
+                    justify-content: center;
+                    padding: 40px 20px;
+                }
+
+                .load-more-btn {
+                    background: linear-gradient(135deg, var(--orange), var(--gold));
+                    border: none;
+                    color: #000;
+                    font-family: 'Press Start 2P', cursive;
+                    font-size: 0.7rem;
+                    padding: 16px 32px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    box-shadow: 0 4px 20px rgba(255, 140, 0, 0.4);
+                }
+
+                .load-more-btn:hover:not(:disabled) {
+                    transform: scale(1.05);
+                    box-shadow: 0 8px 30px rgba(255, 140, 0, 0.6);
+                }
+
+                .load-more-btn:disabled {
+                    opacity: 0.7;
+                    cursor: not-allowed;
+                }
+
+                .remaining-count {
+                    font-family: 'VT323', monospace;
+                    font-size: 1rem;
+                    opacity: 0.8;
+                }
+
+                .btn-loader {
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid rgba(0, 0, 0, 0.2);
+                    border-top-color: #000;
+                    border-radius: 50%;
+                    animation: spin 0.8s linear infinite;
                 }
 
                 /* ========== PHOTO GRID ========== */
@@ -1108,6 +1197,15 @@ export default function Gallery() {
                     .download-btn svg, .delete-btn svg {
                         width: 16px;
                         height: 16px;
+                    }
+
+                    .load-more-btn {
+                        font-size: 0.6rem;
+                        padding: 14px 24px;
+                    }
+
+                    .remaining-count {
+                        font-size: 0.9rem;
                     }
 
                     .footer-title {
